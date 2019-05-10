@@ -81,7 +81,7 @@
         /// <returns>True if the packages are equal, otherwise false.</returns>
         public bool Equals(NugetPackage other)
         {
-            return other.Id == Id && other.Version == Version;
+            return other != null && other.Id == Id && other.Version == Version;
         }
 
         /// <summary>
@@ -91,16 +91,18 @@
         /// <returns>The newly created <see cref="NugetPackage"/>.</returns>
         public static NugetPackage FromNuspec(NuspecFile nuspec)
         {
-            var package = new NugetPackage();
+			var package = new NugetPackage
+			{
+				Id = nuspec.Id,
+				Version = nuspec.Version,
+				Title = nuspec.Title,
+				Description = nuspec.Description,
+				ReleaseNotes = nuspec.ReleaseNotes,
+				LicenseUrl = nuspec.LicenseUrl,
+				ProjectUrl = nuspec.ProjectUrl
+			};
 
-            package.Id = nuspec.Id;
-            package.Version = nuspec.Version;
-            package.Title = nuspec.Title;
-            package.Description = nuspec.Description;
-            package.ReleaseNotes = nuspec.ReleaseNotes;
-            package.LicenseUrl = nuspec.LicenseUrl;
-            package.ProjectUrl = nuspec.ProjectUrl;
-            //package.DownloadUrl = not in a nuspec
+			//package.DownloadUrl = not in a nuspec
 
             if (!string.IsNullOrEmpty(nuspec.IconUrl))
             {
@@ -148,7 +150,8 @@
         /// <param name="y">The second <see cref="NugetPackage"/> to compare.</param>
         /// <returns>True if the packages are equal, otherwise false.</returns>
         public bool Equals(NugetPackage x, NugetPackage y)
-        {
+		{
+			if (x == null || y == null) return x == null && y == null;
             return x.Id == y.Id && x.Version == y.Version;
         }
 

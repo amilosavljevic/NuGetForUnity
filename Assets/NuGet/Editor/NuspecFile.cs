@@ -1,11 +1,12 @@
-﻿namespace NugetForUnity
+﻿using System.IO.Compression;
+using System.Linq;
+
+namespace NugetForUnity
 {
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Xml;
     using System.Xml.Linq;
-    using Ionic.Zip;
 
     /// <summary>
     /// Represents a .nuspec file used to store metadata for a NuGet package.
@@ -120,33 +121,30 @@
         /// <returns>The .nuspec file loaded from inside the .nupkg file.</returns>
         public static NuspecFile FromNupkgFile(string nupkgFilepath)
         {
-            var nuspec = new NuspecFile();
+            NuspecFile nuspec;
 
             if (File.Exists(nupkgFilepath))
             {
                 // get the .nuspec file from inside the .nupkg
-                using (var zip = ZipFile.Read(nupkgFilepath))
+                using (var zip = ZipFile.OpenRead(nupkgFilepath))
                 {
                     //var entry = zip[string.Format("{0}.nuspec", packageId)];
-                    var entry = zip.First(x => x.FileName.EndsWith(".nuspec"));
+                    var entry = zip.Entries.First(x => x.FullName.EndsWith(".nuspec"));
 
-                    using (var stream = new MemoryStream())
-                    {
-                        entry.Extract(stream);
-                        stream.Position = 0;
-
-                        nuspec = Load(stream);
-                    }
+					nuspec = Load(entry.Open());
                 }
             }
             else
             {
                 UnityEngine.Debug.LogErrorFormat("Package could not be read: {0}", nupkgFilepath);
 
-                //nuspec.Id = packageId;
-                //nuspec.Version = packageVersion;
-                nuspec.Description = $"COULD NOT LOAD {nupkgFilepath}";
-            }
+				nuspec = new NuspecFile
+				{
+					//Id = packageId,
+					//Version = packageVersion,
+					Description = $"COULD NOT LOAD {nupkgFilepath}"
+				};
+			}
 
             return nuspec;
         }
@@ -217,10 +215,12 @@
             {
                 foreach (var dependencyElement in dependenciesElement.Elements(XName.Get("dependency", nuspecNamespace)))
                 {
-                    var dependency = new NugetPackageIdentifier();
-                    dependency.Id = (string)dependencyElement.Attribute("id") ?? string.Empty;
-                    dependency.Version = (string)dependencyElement.Attribute("version") ?? string.Empty;
-                    nuspec.Dependencies.Add(dependency);
+					var dependency = new NugetPackageIdentifier
+					{
+						Id = (string)dependencyElement.Attribute("id") ?? string.Empty,
+						Version = (string)dependencyElement.Attribute("version") ?? string.Empty
+					};
+					nuspec.Dependencies.Add(dependency);
                 }
             }
 
@@ -231,10 +231,12 @@
                 //UnityEngine.Debug.Log("Loading files!");
                 foreach (var fileElement in filesElement.Elements(XName.Get("file", nuspecNamespace)))
                 {
-                    var file = new NuspecContentFile();
-                    file.Source = (string)fileElement.Attribute("src") ?? string.Empty;
-                    file.Target = (string)fileElement.Attribute("target") ?? string.Empty;
-                    nuspec.Files.Add(file);
+					var file = new NuspecContentFile
+					{
+						Source = (string)fileElement.Attribute("src") ?? string.Empty,
+						Target = (string)fileElement.Attribute("target") ?? string.Empty
+					};
+					nuspec.Files.Add(file);
                 }
             }
 

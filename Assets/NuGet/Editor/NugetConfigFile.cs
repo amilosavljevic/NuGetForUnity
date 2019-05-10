@@ -177,12 +177,14 @@
         /// <returns>The newly loaded <see cref="NugetConfigFile"/>.</returns>
         public static NugetConfigFile Load(string filePath)
         {
-            var configFile = new NugetConfigFile();
-            configFile.PackageSources = new List<NugetPackageSource>();
-            configFile.InstallFromCache = true;
-            configFile.ReadOnlyPackageFiles = true;
+			var configFile = new NugetConfigFile
+			{
+				PackageSources = new List<NugetPackageSource>(),
+				InstallFromCache = true,
+				ReadOnlyPackageFiles = true
+			};
 
-            var file = XDocument.Load(filePath);
+			var file = XDocument.Load(filePath);
 
             // read the full list of package sources (some may be disabled below)
             var packageSources = file.Root.Element("packageSources");
@@ -212,7 +214,7 @@
                 {
                     var name = add.Attribute("key").Value;
                     var disabled = add.Attribute("value").Value;
-                    if (String.Equals(disabled, "true", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(disabled, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         var source = configFile.PackageSources.FirstOrDefault(p => p.Name == name);
                         if (source != null)
@@ -262,7 +264,7 @@
                     var key = add.Attribute("key").Value;
                     var value = add.Attribute("value").Value;
 
-                    if (String.Equals(key, "repositoryPath", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(key, "repositoryPath", StringComparison.OrdinalIgnoreCase))
                     {
                         configFile.savedRepositoryPath = value;
                         configFile.RepositoryPath = Environment.ExpandEnvironmentVariables(value);
@@ -275,19 +277,19 @@
                             configFile.RepositoryPath = repositoryPath;
                         }
                     }
-                    else if (String.Equals(key, "DefaultPushSource", StringComparison.OrdinalIgnoreCase))
+                    else if (string.Equals(key, "DefaultPushSource", StringComparison.OrdinalIgnoreCase))
                     {
                         configFile.DefaultPushSource = value;
                     }
-                    else if (String.Equals(key, "verbose", StringComparison.OrdinalIgnoreCase))
+                    else if (string.Equals(key, "verbose", StringComparison.OrdinalIgnoreCase))
                     {
                         configFile.Verbose = bool.Parse(value);
                     }
-                    else if (String.Equals(key, "InstallFromCache", StringComparison.OrdinalIgnoreCase))
+                    else if (string.Equals(key, "InstallFromCache", StringComparison.OrdinalIgnoreCase))
                     {
                         configFile.InstallFromCache = bool.Parse(value);
                     }
-                    else if (String.Equals(key, "ReadOnlyPackageFiles", StringComparison.OrdinalIgnoreCase))
+                    else if (string.Equals(key, "ReadOnlyPackageFiles", StringComparison.OrdinalIgnoreCase))
                     {
                         configFile.ReadOnlyPackageFiles = bool.Parse(value);
                     }

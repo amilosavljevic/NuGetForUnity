@@ -38,7 +38,6 @@ if ( $LASTEXITCODE -ne 0 ) {
 
 # Copy .dlls from the build into the Packager folder
 Copy-Item ".\CreateDLL\bin\Release\NugetForUnity.dll" ".\Packager\Assets\NuGet"
-Copy-Item ".\CreateDLL\bin\Release\Ionic.Zip.Reduced.dll" ".\Packager\Assets\NuGet"
 
 # Launch Unity to export the NuGetForUnity package
 Start-UnityEditor -Project ".\Packager" -BatchMode -Quit -Wait -ExportPackage "Assets/NuGet .\NuGetForUnity.unitypackage" -LogFile ".\Packager\NuGetForUnity.unitypackage.log"
@@ -46,5 +45,4 @@ Start-UnityEditor -Project ".\Packager" -BatchMode -Quit -Wait -ExportPackage "A
 # Copy artifacts to output directory
 if ( !(Test-Path $OutputDirectory) ) { New-Item -ItemType Directory $OutputDirectory  }
 Copy-Item ".\CreateDLL\bin\Release\NugetForUnity.*" $OutputDirectory
-Copy-Item ".\CreateDLL\bin\Release\Ionic.Zip.Reduced.*" $OutputDirectory
 Copy-Item ".\Packager\NuGetForUnity.unitypackage*" $OutputDirectory

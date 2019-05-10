@@ -89,17 +89,17 @@
 
                     EditorGUILayout.BeginHorizontal();
                     {
-                        if (GUILayout.Button(string.Format("Move Up")))
+                        if (GUILayout.Button("Move Up"))
                         {
                             sourceToMoveUp = source;
                         }
 
-                        if (GUILayout.Button(string.Format("Move Down")))
+                        if (GUILayout.Button("Move Down"))
                         {
                             sourceToMoveDown = source;
                         }
 
-                        if (GUILayout.Button(string.Format("Remove")))
+                        if (GUILayout.Button("Remove"))
                         {
                             sourceToRemove = source;
                         }
@@ -134,14 +134,14 @@
                 NugetHelper.NugetConfigFile.PackageSources.Remove(sourceToRemove);
             }
 
-            if (GUILayout.Button(string.Format("Add New Source")))
+            if (GUILayout.Button("Add New Source"))
             {
                 NugetHelper.NugetConfigFile.PackageSources.Add(new NugetPackageSource("New Source", "source_path"));
             }
 
             EditorGUILayout.EndScrollView();
 
-            if (GUILayout.Button(string.Format("Save")))
+            if (GUILayout.Button("Save"))
             {
                 NugetHelper.NugetConfigFile.Save(NugetHelper.NugetConfigFilePath);
                 NugetHelper.LoadNugetConfigFile();

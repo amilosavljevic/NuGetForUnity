@@ -60,18 +60,20 @@
 
             Debug.LogFormat("Creating: {0}", filepath);
 
-            var file = new NuspecFile();
-            file.Id = "MyPackage";
-            file.Version = "0.0.1";
-            file.Authors = "Your Name";
-            file.Owners = "Your Name";
-            file.LicenseUrl = "http://your_license_url_here";
-            file.ProjectUrl = "http://your_project_url_here";
-            file.Description = "A description of what this packages is and does.";
-            file.ReleaseNotes = "Notes for this specific release";
-            file.Copyright = "Copyright 2017";
-            file.IconUrl = "https://www.nuget.org/Content/Images/packageDefaultIcon-50x50.png";
-            file.Save(filepath);
+			var file = new NuspecFile
+			{
+				Id = "MyPackage",
+				Version = "0.0.1",
+				Authors = "Your Name",
+				Owners = "Your Name",
+				LicenseUrl = "http://your_license_url_here",
+				ProjectUrl = "http://your_project_url_here",
+				Description = "A description of what this packages is and does.",
+				ReleaseNotes = "Notes for this specific release",
+				Copyright = "Copyright 2017",
+				IconUrl = "https://www.nuget.org/Content/Images/packageDefaultIcon-50x50.png"
+			};
+			file.Save(filepath);
 
             AssetDatabase.Refresh();
 
@@ -295,7 +297,7 @@
 
                 apiKey = EditorGUILayout.TextField(new GUIContent("API Key", "The API key to use when pushing the package to the server"), apiKey);
 
-                if (GUILayout.Button(string.Format("Push to Server")))
+                if (GUILayout.Button("Push to Server"))
                 {
                     NugetHelper.Push(nuspec, filepath, apiKey);
                 }

@@ -1,4 +1,6 @@
-﻿namespace NugetForUnity
+﻿using System;
+
+namespace NugetForUnity
 {
     using System.Collections.Generic;
     using System.IO;
@@ -57,10 +59,9 @@
         /// <returns>A newly created <see cref="PackagesConfigFile"/>.</returns>
         public static PackagesConfigFile Load(string filepath)
         {
-            var configFile = new PackagesConfigFile();
-            configFile.Packages = new List<NugetPackageIdentifier>();
+			var configFile = new PackagesConfigFile {Packages = new List<NugetPackageIdentifier>()};
 
-            // Create a package.config file, if there isn't already one in the project
+			// Create a package.config file, if there isn't already one in the project
             if (!File.Exists(filepath))
             {
                 Debug.LogFormat("No packages.config file found. Creating default at {0}", filepath);
@@ -73,10 +74,12 @@
             var packagesFile = XDocument.Load(filepath);
             foreach (var packageElement in packagesFile.Root.Elements())
             {
-                var package = new NugetPackage();
-                package.Id = packageElement.Attribute("id").Value;
-                package.Version = packageElement.Attribute("version").Value;
-                configFile.Packages.Add(package);
+				var package = new NugetPackage
+				{
+					Id = packageElement.Attribute("id").Value,
+					Version = packageElement.Attribute("version").Value
+				};
+				configFile.Packages.Add(package);
             }
 
             return configFile;
@@ -90,16 +93,11 @@
         {
             Packages.Sort(delegate (NugetPackageIdentifier x, NugetPackageIdentifier y)
             {
-                if (x.Id == null && y.Id == null)
-                    return 0;
-                else if (x.Id == null)
-                    return -1;
-                else if (y.Id == null)
-                    return 1;
-                else if (x.Id == y.Id)
-                    return x.Version.CompareTo(y.Version);
-                else
-                    return x.Id.CompareTo(y.Id);
+                if (x.Id == null && y.Id == null) return 0;
+                if (x.Id == null) return -1;
+                if (y.Id == null) return 1;
+                if (x.Id == y.Id) return string.Compare(x.Version, y.Version, StringComparison.Ordinal);
+                return string.Compare(x.Id, y.Id, StringComparison.Ordinal);
             });
 
             var packagesFile = new XDocument();

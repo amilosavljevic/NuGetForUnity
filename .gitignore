@@ -75,6 +75,5 @@ CreateDLL/bin
 bin
 *.suo
 /Packager/Assets/NuGet/NugetForUnity.dll
-/Packager/Assets/NuGet/Ionic.Zip.Reduced.dll
 /Packager/NuGetForUnity.unitypackage.log
 /CreateDLL/.vs

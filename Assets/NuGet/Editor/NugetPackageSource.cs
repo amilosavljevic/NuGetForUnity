@@ -6,7 +6,6 @@
     using System.IO;
     using System.Linq;
     using System.Net;
-    using System.Xml;
     using System.Xml.Linq;
     using Debug = UnityEngine.Debug;
 
@@ -28,15 +27,9 @@
         /// <summary>
         /// Gets path, with the values of environment variables expanded.
         /// </summary>
-        public string ExpandedPath
-        {
-            get
-            {
-                return Environment.ExpandEnvironmentVariables(SavedPath);
-            }
-        }
+        public string ExpandedPath => Environment.ExpandEnvironmentVariables(SavedPath);
 
-        public string UserName { get; set; }
+		public string UserName { get; set; }
 
         /// <summary>
         /// Gets or sets the password used to access the feed. Null indicates that no password is used.
@@ -46,19 +39,13 @@
         /// <summary>
         /// Gets password, with the values of environment variables expanded.
         /// </summary>
-        public string ExpandedPassword
-        {
-            get
-            {
-                return SavedPassword != null ? Environment.ExpandEnvironmentVariables(SavedPassword) : null;
-            }
-        }
+        public string ExpandedPassword => SavedPassword != null ? Environment.ExpandEnvironmentVariables(SavedPassword) : null;
 
-        public bool HasPassword
+		public bool HasPassword
         {
-            get { return SavedPassword != null; }
+            get => SavedPassword != null;
 
-            set
+			set
             {
                 if (value)
                 {
@@ -77,7 +64,7 @@
         /// <summary>
         /// Gets or sets a value indicated whether the path is a local path or a remote path.
         /// </summary>
-        public bool IsLocalPath { get; private set; }
+        public bool IsLocalPath { get; }
 
         /// <summary>
         /// Gets or sets a value indicated whether this source is enabled or not.
@@ -109,7 +96,7 @@
 
             if (IsLocalPath)
             {
-                var localPackagePath = System.IO.Path.Combine(ExpandedPath, $"./{package.Id}.{package.Version}.nupkg");
+                var localPackagePath = Path.Combine(ExpandedPath, $"./{package.Id}.{package.Version}.nupkg");
                 if (File.Exists(localPackagePath))
                 {
                     var localPackage = NugetPackage.FromNupkgFile(localPackagePath);
@@ -128,25 +115,24 @@
             else
             {
                 // See here: http://www.odata.org/documentation/odata-version-2-0/uri-conventions/
-                var url = string.Empty;
 
                 // We used to rely on expressions such as &$filter=Version ge '9.0.1' to find versions in a range, but the results were sorted alphabetically. This
                 // caused version 10.0.0 to be less than version 9.0.0. In order to work around this issue, we'll request all versions and perform filtering ourselves.
 
-                url = $"{ExpandedPath}FindPackagesById()?$orderby=Version asc&id='{package.Id}'";
+                var url = $"{ExpandedPath}FindPackagesById()?$orderby=Version asc&id='{package.Id}'";
 
                 try
                 {
                     foundPackages = GetPackagesFromUrl(url, UserName, ExpandedPassword);
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
                     foundPackages = new List<NugetPackage>();
                     Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e.ToString());
                 }
 
                 foundPackages.Sort();
-                if (foundPackages.Exists(p => package.InRange(p)))
+                if (foundPackages.Exists(package.InRange))
                 {
                     // Return all the packages in the range of versions specified by 'package'.
                     foundPackages.RemoveAll(p => !package.InRange(p));
@@ -163,12 +149,9 @@
                 }
             }
 
-            if (foundPackages != null)
+            foreach (var foundPackage in foundPackages)
             {
-                foreach (var foundPackage in foundPackages)
-                {
-                    foundPackage.PackageSource = this;
-                }
+                foundPackage.PackageSource = this;
             }
 
             return foundPackages;
@@ -201,7 +184,7 @@
         {
             if (IsLocalPath)
             {
-                return GetLocalPackages(searchTerm, includeAllVersions, includePrerelease, numberToGet, numberToSkip);
+                return GetLocalPackages(searchTerm, includeAllVersions, includePrerelease, numberToSkip);
             }
 
             //Example URL: "http://www.nuget.org/api/v2/Search()?$filter=IsLatestVersion&$orderby=Id&$skip=0&$top=30&searchTerm='newtonsoft'&targetFramework=''&includePrerelease=false";
@@ -248,23 +231,22 @@
             {
                 return GetPackagesFromUrl(url, UserName, ExpandedPassword);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 Debug.LogErrorFormat("Unable to retrieve package list from {0}\n{1}", url, e.ToString());
                 return new List<NugetPackage>();
             }
         }
 
-        /// <summary>
-        /// Gets a list of all available packages from a local source (not a web server) that match the given filters.
-        /// </summary>
-        /// <param name="searchTerm">The search term to use to filter packages. Defaults to the empty string.</param>
-        /// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
-        /// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
-        /// <param name="numberToGet">The number of packages to fetch.</param>
-        /// <param name="numberToSkip">The number of packages to skip before fetching.</param>
-        /// <returns>The list of available packages.</returns>
-        private List<NugetPackage> GetLocalPackages(string searchTerm = "", bool includeAllVersions = false, bool includePrerelease = false, int numberToGet = 15, int numberToSkip = 0)
+		/// <summary>
+		/// Gets a list of all available packages from a local source (not a web server) that match the given filters.
+		/// </summary>
+		/// <param name="searchTerm">The search term to use to filter packages. Defaults to the empty string.</param>
+		/// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
+		/// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
+		/// <param name="numberToSkip">The number of packages to skip before fetching.</param>
+		/// <returns>The list of available packages.</returns>
+		private List<NugetPackage> GetLocalPackages(string searchTerm = "", bool includeAllVersions = false, bool includePrerelease = false, int numberToSkip = 0)
         {
             var localPackages = new List<NugetPackage>();
 
@@ -337,10 +319,8 @@
         {
             NugetHelper.LogVerbose("Getting packages from: {0}", url);
 
-            Stopwatch stopwatch = new Stopwatch();
+            var stopwatch = new Stopwatch();
             stopwatch.Start();
-
-            var packages = new List<NugetPackage>();
 
             // Mono doesn't have a Certificate Authority, so we have to provide all validation manually.  Currently just accept anything.
             // See here: http://stackoverflow.com/questions/4926676/mono-webrequest-fails-with-https
@@ -354,7 +334,7 @@
             var responseStream = NugetHelper.RequestUrl(url, username, password, timeOut: 5000);
             var streamReader = new StreamReader(responseStream);
 
-            packages = NugetODataResponse.Parse(XDocument.Load(streamReader));
+            var packages = NugetODataResponse.Parse(XDocument.Load(streamReader));
 
             foreach (var package in packages)
             {
@@ -451,10 +431,9 @@
                     var newPackages = GetPackagesFromUrl(url, UserName, ExpandedPassword);
                     updates.AddRange(newPackages);
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
-                    WebException webException = e as WebException;
-                    HttpWebResponse webResponse = webException != null ? webException.Response as HttpWebResponse : null;
+					var webResponse = e is WebException webException ? webException.Response as HttpWebResponse : null;
                     if (webResponse != null && webResponse.StatusCode == HttpStatusCode.NotFound)
                     {
                         // Some web services, such as VSTS don't support the GetUpdates API. Attempt to retrieve updates via FindPackagesById.
@@ -469,16 +448,11 @@
             // sort alphabetically
             updates.Sort(delegate (NugetPackage x, NugetPackage y)
             {
-                if (x.Id == null && y.Id == null)
-                    return 0;
-                else if (x.Id == null)
-                    return -1;
-                else if (y.Id == null)
-                    return 1;
-                else if (x.Id == y.Id)
-                    return x.Version.CompareTo(y.Version);
-                else
-                    return x.Id.CompareTo(y.Id);
+                if (x.Id == null && y.Id == null) return 0;
+                if (x.Id == null) return -1;
+                if (y.Id == null) return 1;
+                if (x.Id == y.Id) return string.Compare(x.Version, y.Version, StringComparison.Ordinal);
+                    return string.Compare(x.Id, y.Id, StringComparison.Ordinal);
             });
 
 #if TEST_GET_UPDATES_FALLBACK
@@ -492,6 +466,7 @@
             return updates;
         }
 
+#if TEST_GET_UPDATES_FALLBACK
         private static void ComparePackageLists(List<NugetPackage> updates, List<NugetPackage> updatesReplacement, string errorMessageToDisplayIfListsDoNotMatch)
         {
             var matchingComparison = new System.Text.StringBuilder();
@@ -523,6 +498,7 @@
                 Debug.LogWarningFormat("{0}\n{1}\n{2}\n{3}", errorMessageToDisplayIfListsDoNotMatch, matchingComparison, missingComparison, extraComparison);
             }
         }
+#endif
 
         /// <summary>
         /// Some NuGet feeds such as Visual Studio Team Services do not implement the GetUpdates function.
@@ -541,10 +517,9 @@
             var updates = new List<NugetPackage>();
             foreach (var installedPackage in installedPackages)
             {
-                var packageUpdates = new List<NugetPackage>();
                 var versionRange = $"({installedPackage.Version},)"; // Minimum of Current ID (exclusive) with no maximum (exclusive).
                 var id = new NugetPackageIdentifier(installedPackage.Id, versionRange); 
-                packageUpdates = FindPackagesById(id);
+                var packageUpdates = FindPackagesById(id);
 
                 var mostRecentPrerelease = includePrerelease ? packageUpdates.FindLast(p => p.IsPrerelease) : default(NugetPackage);
                 packageUpdates.RemoveAll(p => p.IsPrerelease && p != mostRecentPrerelease);

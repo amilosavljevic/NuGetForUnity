@@ -10,11 +10,11 @@ namespace NugetForUnity
     /// </summary>
     public static class NugetODataResponse
     {
-        private static string AtomNamespace = "http://www.w3.org/2005/Atom";
+        private const string AtomNamespace = "http://www.w3.org/2005/Atom";
 
-        private static string DataServicesNamespace = "http://schemas.microsoft.com/ado/2007/08/dataservices";
+        private const string DataServicesNamespace = "http://schemas.microsoft.com/ado/2007/08/dataservices";
 
-        private static string MetaDataNamespace = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata";
+        private const string MetaDataNamespace = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata";
 
         /// <summary>
         /// Gets the string value of a NuGet metadata property from the given properties element and property name.
@@ -50,11 +50,13 @@ namespace NugetForUnity
             var packageEntries = document.Root.Elements(XName.Get("entry", AtomNamespace));
             foreach (var entry in packageEntries)
             {
-                var package = new NugetPackage();
-                package.Id = entry.GetAtomElement("title").Value;
-                package.DownloadUrl = entry.GetAtomElement("content").Attribute("src").Value;
+				var package = new NugetPackage
+				{
+					Id = entry.GetAtomElement("title").Value,
+					DownloadUrl = entry.GetAtomElement("content").Attribute("src").Value
+				};
 
-                var entryProperties = entry.Element(XName.Get("properties", MetaDataNamespace));
+				var entryProperties = entry.Element(XName.Get("properties", MetaDataNamespace));
                 package.Title = entryProperties.GetProperty("Title");
                 package.Version = entryProperties.GetProperty("Version");
                 package.Description = entryProperties.GetProperty("Description");
@@ -101,17 +103,14 @@ namespace NugetForUnity
                             framework = details[2];
                         }
 
-                        NugetFrameworkGroup group;
-                        if (dependencyGroups.TryGetValue(framework, out group))
+						if (dependencyGroups.TryGetValue(framework, out var group))
                         {
                             group.Dependencies.Add(dependency);
                         }
                         else
-                        {
-                            group = new NugetFrameworkGroup();
-                            group.Dependencies = new List<NugetPackageIdentifier>();
-                            group.Dependencies.Add(dependency);
-                            dependencyGroups.Add(framework, group);
+						{
+							group = new NugetFrameworkGroup {Dependencies = new List<NugetPackageIdentifier> {dependency}};
+							dependencyGroups.Add(framework, group);
                         }
                     }
 

@@ -1,4 +1,6 @@
-﻿namespace NugetForUnity
+﻿using System.IO.Compression;
+
+namespace NugetForUnity
 {
     using System;
     using System.Collections.Generic;
@@ -7,7 +9,6 @@
     using System.Linq;
     using System.Net;
     using System.Text;
-    using Ionic.Zip;
     using UnityEditor;
     using UnityEngine;
     using Debug = UnityEngine.Debug;
@@ -214,7 +215,7 @@
             var fileName = files[0];
             var commandLine = arguments;
 #endif
-            Process process = Process.Start(
+            var process = Process.Start(
                 new ProcessStartInfo(fileName, commandLine)
                 {
                     RedirectStandardError = true,
@@ -234,13 +235,13 @@
                 process.Kill();
             }
 
-            string error = process.StandardError.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
             if (!string.IsNullOrEmpty(error))
             {
                 Debug.LogError(error);
             }
 
-            string output = process.StandardOutput.ReadToEnd();
+            var output = process.StandardOutput.ReadToEnd();
             if (logOuput && !string.IsNullOrEmpty(output))
             {
                 Debug.Log(output);
@@ -780,7 +781,7 @@
         {
             LoadNugetConfigFile();
 
-            Stopwatch stopwatch = new Stopwatch();
+            var stopwatch = new Stopwatch();
             stopwatch.Start();
 
             installedPackages.Clear();
@@ -907,9 +908,7 @@
         /// <returns>The best <see cref="NugetPackage"/> match, if there is one, otherwise null.</returns>
         private static NugetPackage GetInstalledPackage(NugetPackageIdentifier packageId)
         {
-            NugetPackage installedPackage = null;
-
-            if (installedPackages.TryGetValue(packageId.Id, out installedPackage))
+			if (installedPackages.TryGetValue(packageId.Id, out var installedPackage))
             {
                 if (packageId.Version != installedPackage.Version)
                 {
@@ -1155,14 +1154,17 @@
                     var baseDirectory = Path.Combine(NugetConfigFile.RepositoryPath, $"{package.Id}.{package.Version}");
 
                     // unzip the package
-                    using (var zip = ZipFile.Read(cachedPackagePath))
+                    using (var zip = ZipFile.OpenRead(cachedPackagePath))
                     {
-                        foreach (var entry in zip)
-                        {
-                            entry.Extract(baseDirectory, ExtractExistingFileAction.OverwriteSilently);
+                        foreach (var entry in zip.Entries)
+						{
+							var destPath = Path.Combine(baseDirectory, entry.FullName);
+							// Skip entries that want to unpack somewhere outside our destination
+							if (!destPath.StartsWith(baseDirectory, StringComparison.Ordinal)) continue;
+                            entry.ExtractToFile(destPath, true);
                             if (NugetConfigFile.ReadOnlyPackageFiles)
                             {
-                                var extractedFile = new FileInfo(Path.Combine(baseDirectory, entry.FileName));
+                                var extractedFile = new FileInfo(destPath);
                                 extractedFile.Attributes |= FileAttributes.ReadOnly;
                             }
                         }
@@ -1210,7 +1212,7 @@
 
             public string GetAccount(string url)
             {
-                Match match = Regex.Match(url, AccountUrlPattern, RegexOptions.IgnoreCase);
+                var match = Regex.Match(url, AccountUrlPattern, RegexOptions.IgnoreCase);
                 if (!match.Success) { return null; }
 
                 return match.Groups["account"].Value;
@@ -1246,7 +1248,7 @@
         /// <returns>Stream containing the result.</returns>
         public static Stream RequestUrl(string url, string userName, string password, int? timeOut)
         {
-            HttpWebRequest getRequest = (HttpWebRequest)WebRequest.Create(url);
+            var getRequest = (HttpWebRequest)WebRequest.Create(url);
             if (timeOut.HasValue)
             {
                 getRequest.Timeout = timeOut.Value;
@@ -1272,7 +1274,7 @@
             }
 
             LogVerbose("HTTP GET {0}", url);
-            Stream objStream = getRequest.GetResponse().GetResponseStream();
+            var objStream = getRequest.GetResponse().GetResponseStream();
             return objStream;
         }
 
@@ -1283,7 +1285,7 @@
         {
             UpdateInstalledPackages();
 
-            Stopwatch stopwatch = new Stopwatch();
+            var stopwatch = new Stopwatch();
             stopwatch.Start();
 
             try
@@ -1387,7 +1389,7 @@
         public static Texture2D DownloadImage(string url)
         {
             var timedout = false;
-            Stopwatch stopwatch = new Stopwatch();
+            var stopwatch = new Stopwatch();
             stopwatch.Start();
 
             var fromCache = false;
@@ -1491,18 +1493,18 @@
 
         private static void DownloadCredentialProviders(Uri feedUri)
         {
-            foreach (var feed in NugetHelper.knownAuthenticatedFeeds)
+            foreach (var feed in knownAuthenticatedFeeds)
             {
                 var account = feed.GetAccount(feedUri.ToString());
                 if (string.IsNullOrEmpty(account)) { continue; }
 
                 var providerUrl = feed.GetProviderUrl(account);
 
-                HttpWebRequest credentialProviderRequest = (HttpWebRequest)WebRequest.Create(providerUrl);
+                var credentialProviderRequest = (HttpWebRequest)WebRequest.Create(providerUrl);
 
                 try
                 {
-                    Stream credentialProviderDownloadStream = credentialProviderRequest.GetResponse().GetResponseStream();
+                    var credentialProviderDownloadStream = credentialProviderRequest.GetResponse().GetResponseStream();
 
                     var tempFileName = Path.GetTempFileName();
                     LogVerbose("Writing {0} to {1}", providerUrl, tempFileName);
@@ -1513,20 +1515,20 @@
                     }
 
                     var providerDestination = Environment.GetEnvironmentVariable("NUGET_CREDENTIALPROVIDERS_PATH");
-                    if (String.IsNullOrEmpty(providerDestination))
+                    if (string.IsNullOrEmpty(providerDestination))
                     {
                         providerDestination = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nuget/CredentialProviders");
                     }
 
                     // Unzip the bundle and extract any credential provider exes
-                    using (var zip = ZipFile.Read(tempFileName))
+                    using (var zip = ZipFile.OpenRead(tempFileName))
                     {
-                        foreach (var entry in zip)
+                        foreach (var entry in zip.Entries)
                         {
-                            if (Regex.IsMatch(entry.FileName, @"^credentialprovider.+\.exe$", RegexOptions.IgnoreCase))
+                            if (Regex.IsMatch(entry.FullName, @"^credentialprovider.+\.exe$", RegexOptions.IgnoreCase))
                             {
-                                LogVerbose("Extracting {0} to {1}", entry.FileName, providerDestination);
-                                entry.Extract(providerDestination, ExtractExistingFileAction.OverwriteSilently);
+                                LogVerbose("Extracting {0} to {1}", entry.FullName, providerDestination);
+                                entry.ExtractToFile(Path.Combine(providerDestination, entry.FullName), true);
                             }
                         }
                     }
@@ -1555,8 +1557,11 @@
 			{
 				// Build the list of possible locations to find the credential provider. In order it should be local app data, paths set on the
 				// environment varaible, and lastly look at the root of the pacakges save location.
-				var possibleCredentialProviderPaths = new List<string>();
-				possibleCredentialProviderPaths.Add(Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nuget"), "CredentialProviders"));
+				var possibleCredentialProviderPaths = new List<string>
+				{
+					Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nuget"),
+								"CredentialProviders")
+				};
 
 				var environmentCredentialProviderPaths = Environment.GetEnvironmentVariable("NUGET_CREDENTIALPROVIDERS_PATH");
 				if (!string.IsNullOrEmpty(environmentCredentialProviderPaths))
@@ -1581,22 +1586,27 @@
 				foreach (var providerPath in providerPaths.Distinct())
 				{
 					// Launch the credential provider executable and get the json encoded response from the std output
-					Process process = new Process();
-					process.StartInfo.UseShellExecute = false;
-					process.StartInfo.CreateNoWindow = true;
-					process.StartInfo.RedirectStandardOutput = true;
-					process.StartInfo.RedirectStandardError = true;
-					process.StartInfo.FileName = providerPath;
-					process.StartInfo.Arguments = string.Format("-uri \"{0}\"", feedUri.ToString());
+					var process = new Process
+					{
+						StartInfo =
+						{
+							UseShellExecute = false,
+							CreateNoWindow = true,
+							RedirectStandardOutput = true,
+							RedirectStandardError = true,
+							FileName = providerPath,
+							Arguments = $"-uri \"{feedUri}\"",
+							StandardOutputEncoding = Encoding.GetEncoding(850)
+						}
+					};
 
 					// http://stackoverflow.com/questions/16803748/how-to-decode-cmd-output-correctly
 					// Default = 65533, ASCII = ?, Unicode = nothing works at all, UTF-8 = 65533, UTF-7 = 242 = WORKS!, UTF-32 = nothing works at all
-					process.StartInfo.StandardOutputEncoding = Encoding.GetEncoding(850);
 					process.Start();
 					process.WaitForExit();
 
-					string output = process.StandardOutput.ReadToEnd();
-					string errors = process.StandardError.ReadToEnd();
+					var output = process.StandardOutput.ReadToEnd();
+					var errors = process.StandardError.ReadToEnd();
 
 					switch ((CredentialProviderExitCode)process.ExitCode)
 					{

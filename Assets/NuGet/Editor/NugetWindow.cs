@@ -187,7 +187,7 @@
             // get the List<PreferencesWindow.Section> m_Sections.Count
             var m_Sections = preferencesWindow.GetField("m_Sections", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var list = m_Sections.GetValue(preferencesEditorWindow);
-            var sectionList = typeof(List<>).MakeGenericType(new Type[] { preferencesWindowSection });
+            var sectionList = typeof(List<>).MakeGenericType(preferencesWindowSection);
             var getCount = sectionList.GetProperty("Count").GetGetMethod(true);
             var count = (int)getCount.Invoke(list, null);
             //Debug.LogFormat("Count = {0}", count);
@@ -285,8 +285,8 @@
 
         private static string GetLatestVersonFromReleasesHtml(string response, out string url)
         {
-            Regex hrefRegex = new Regex(@"<a href=""(?<url>.*NuGetForUnity\.(?<version>\d+\.\d+\.\d+)\.unitypackage)""");
-            Match match = hrefRegex.Match(response);
+            var hrefRegex = new Regex(@"<a href=""(?<url>.*NuGetForUnity\.(?<version>\d+\.\d+\.\d+)\.unitypackage)""");
+            var match = hrefRegex.Match(response);
             if (!match.Success)
             {
                 url = null;
@@ -306,7 +306,7 @@
 
         private void Refresh(bool forceFullRefresh)
         {
-            Stopwatch stopwatch = new Stopwatch();
+            var stopwatch = new Stopwatch();
             stopwatch.Start();
 
             try

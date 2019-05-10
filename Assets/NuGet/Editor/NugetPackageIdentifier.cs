@@ -20,29 +20,29 @@
         /// <summary>
         /// Gets a value indicating whether this is a prerelease package or an official release package.
         /// </summary>
-        public bool IsPrerelease { get { return Version.Contains("-"); } }
+        public bool IsPrerelease => Version.Contains("-");
 
-        /// <summary>
+		/// <summary>
         /// Gets a value indicating whether the version number specified is a range of values.
         /// </summary>
-        public bool HasVersionRange { get { return Version.StartsWith("(") || Version.StartsWith("["); } }
+        public bool HasVersionRange => Version.StartsWith("(") || Version.StartsWith("[");
 
-        /// <summary>
+		/// <summary>
         /// Gets a value indicating whether the minimum version number (only valid when HasVersionRange is true) is inclusive (true) or exclusive (false).
         /// </summary>
-        public bool IsMinInclusive { get { return Version.StartsWith("["); } }
+        public bool IsMinInclusive => Version.StartsWith("[");
 
-        /// <summary>
+		/// <summary>
         /// Gets a value indicating whether the maximum version number (only valid when HasVersionRange is true) is inclusive (true) or exclusive (false).
         /// </summary>
-        public bool IsMaxInclusive { get { return Version.EndsWith("]"); } }
+        public bool IsMaxInclusive => Version.EndsWith("]");
 
-        /// <summary>
+		/// <summary>
         /// Gets the minimum version number of the NuGet package. Only valid when HasVersionRange is true.
         /// </summary>
-        public string MinimumVersion { get { return Version.TrimStart(new[] { '[', '(' }).TrimEnd(new[] { ']', ')' }).Split(new[] { ',' })[0].Trim(); } }
+        public string MinimumVersion => Version.TrimStart('[', '(').TrimEnd(']', ')').Split(',')[0].Trim();
 
-        /// <summary>
+		/// <summary>
         /// Gets the maximum version number of the NuGet package. Only valid when HasVersionRange is true.
         /// </summary>
         public string MaximumVersion 
@@ -50,7 +50,7 @@
             get 
             {
                 // if there is no MaxVersion specified, but the Max is Inclusive, then it is an EXACT version match with the stored MINIMUM
-                var minMax = Version.TrimStart(new[] { '[', '(' }).TrimEnd(new[] { ']', ')' }).Split(new[] { ',' });
+                var minMax = Version.TrimStart('[', '(').TrimEnd(']', ')').Split(',');
                 return minMax.Length == 2 ? minMax[1].Trim() : null; 
             } 
         }
@@ -95,7 +95,7 @@
         {
             if (first.Id != second.Id)
             {
-                return string.Compare(first.Id, second.Id) < 0;
+                return string.CompareOrdinal(first.Id, second.Id) < 0;
             }
 
             return CompareVersions(first.Version, second.Version) < 0;
@@ -111,7 +111,7 @@
         {
             if (first.Id != second.Id)
             {
-                return string.Compare(first.Id, second.Id) > 0;
+                return string.CompareOrdinal(first.Id, second.Id) > 0;
             }
 
             return CompareVersions(first.Version, second.Version) > 0;
@@ -127,7 +127,7 @@
         {
             if (first.Id != second.Id)
             {
-                return string.Compare(first.Id, second.Id) <= 0;
+                return string.CompareOrdinal(first.Id, second.Id) <= 0;
             }
 
             return CompareVersions(first.Version, second.Version) <= 0;
@@ -143,7 +143,7 @@
         {
             if (first.Id != second.Id)
             {
-                return string.Compare(first.Id, second.Id) >= 0;
+                return string.CompareOrdinal(first.Id, second.Id) >= 0;
             }
 
             return CompareVersions(first.Version, second.Version) >= 0;
@@ -190,13 +190,7 @@
         /// <returns>True if the given object is equal to this <see cref="NugetPackageIdentifier"/>, otherwise false.</returns>
         public override bool Equals(object obj)
         {
-            // If parameter is null return false.
-            if (obj == null)
-            {
-                return false;
-            }
-
-            // If parameter cannot be cast to NugetPackageIdentifier return false.
+			// If parameter cannot be cast to NugetPackageIdentifier return false.
             var p = obj as NugetPackageIdentifier;
             if ((object)p == null)
             {
@@ -229,7 +223,7 @@
         /// Determines if the given <see cref="NugetPackageIdentifier"/>'s version is in the version range of this <see cref="NugetPackageIdentifier"/>.
         /// See here: https://docs.nuget.org/ndocs/create-packages/dependency-versions
         /// </summary>
-        /// <param name="otherVersion">The <see cref="NugetPackageIdentifier"/> whose version to check if is in the range.</param>
+        /// <param name="otherPackage">The <see cref="NugetPackageIdentifier"/> whose version to check if is in the range.</param>
         /// <returns>True if the given version is in the range, otherwise false.</returns>
         public bool InRange(NugetPackageIdentifier otherPackage)
         {
@@ -391,7 +385,7 @@
                 var minor = minorA < minorB ? -1 : minorA > minorB ? 1 : 0;
                 var patch = patchA < patchB ? -1 : patchA > patchB ? 1 : 0;
                 var build = buildA < buildB ? -1 : buildA > buildB ? 1 : 0;
-                var prerelease = string.Compare(prereleaseA, prereleaseB);
+                var prerelease = string.CompareOrdinal(prereleaseA, prereleaseB);
 
                 if (major == 0)
                 {
@@ -431,12 +425,12 @@
 
         public int CompareTo(NugetPackage other)
         {
-            if (this.Id != other.Id)
+            if (Id != other.Id)
             {
-                return string.Compare(this.Id, other.Id);
+                return string.CompareOrdinal(Id, other.Id);
             }
 
-            return CompareVersions(this.Version, other.Version);
+            return CompareVersions(Version, other.Version);
         }
     }
 }

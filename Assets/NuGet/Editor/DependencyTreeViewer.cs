@@ -34,7 +34,7 @@
         /// <summary>
         /// The list of packages that depend on the specified package.
         /// </summary>
-        private List<NugetPackage> parentPackages = new List<NugetPackage>();
+        private readonly List<NugetPackage> parentPackages = new List<NugetPackage>();
 
         /// <summary>
         /// The list of currently installed packages.
@@ -46,7 +46,7 @@
         /// </summary>
         private string[] installedPackageIds;
 
-        private Dictionary<NugetPackage, bool> expanded = new Dictionary<NugetPackage, bool>();
+        private readonly Dictionary<NugetPackage, bool> expanded = new Dictionary<NugetPackage, bool>();
 
         private List<NugetPackage> roots;
 
