@@ -50,7 +50,7 @@
             get 
             {
                 // if there is no MaxVersion specified, but the Max is Inclusive, then it is an EXACT version match with the stored MINIMUM
-                string[] minMax = Version.TrimStart(new[] { '[', '(' }).TrimEnd(new[] { ']', ')' }).Split(new[] { ',' });
+                var minMax = Version.TrimStart(new[] { '[', '(' }).TrimEnd(new[] { ']', ')' }).Split(new[] { ',' });
                 return minMax.Length == 2 ? minMax[1].Trim() : null; 
             } 
         }
@@ -197,7 +197,7 @@
             }
 
             // If parameter cannot be cast to NugetPackageIdentifier return false.
-            NugetPackageIdentifier p = obj as NugetPackageIdentifier;
+            var p = obj as NugetPackageIdentifier;
             if ((object)p == null)
             {
                 return false;
@@ -222,7 +222,7 @@
         /// <returns>A string in the form "{ID}.{Version}".</returns>
         public override string ToString()
         {
-            return string.Format("{0}.{1}", Id, Version);
+            return $"{Id}.{Version}";
         }
 
         /// <summary>
@@ -258,13 +258,13 @@
             if (!HasVersionRange)
             {
                 // if it has no version range specified (ie only a single version number) NuGet's specs state that that is the minimum version number, inclusive
-                int compare = CompareVersions(Version, otherVersion);
+                var compare = CompareVersions(Version, otherVersion);
                 return compare <= 0 ? 0 : compare;
             }
 
             if (!string.IsNullOrEmpty(MinimumVersion))
             {
-                int compare = CompareVersions(MinimumVersion, otherVersion);
+                var compare = CompareVersions(MinimumVersion, otherVersion);
                 // -1 = Min < other <-- Inclusive & Exclusive
                 //  0 = Min = other <-- Inclusive Only
                 // +1 = Min > other <-- OUT OF RANGE
@@ -287,7 +287,7 @@
 
             if (!string.IsNullOrEmpty(MaximumVersion))
             {
-                int compare = CompareVersions(MaximumVersion, otherVersion);
+                var compare = CompareVersions(MaximumVersion, otherVersion);
                 // -1 = Max < other <-- OUT OF RANGE
                 //  0 = Max = other <-- Inclusive Only
                 // +1 = Max > other <-- Inclusive & Exclusive
@@ -333,65 +333,65 @@
         {
             try
             {
-                string[] splitStringsA = versionA.Split('-');
+                var splitStringsA = versionA.Split('-');
                 versionA = splitStringsA[0];
-                string prereleaseA = string.Empty;
+                var prereleaseA = string.Empty;
 
                 if (splitStringsA.Length > 1)
                 {
                     prereleaseA = splitStringsA[1];
-                    for (int i = 2; i < splitStringsA.Length; i++)
+                    for (var i = 2; i < splitStringsA.Length; i++)
                     {
                         prereleaseA += "-" + splitStringsA[i];
                     }
                 }
 
-                string[] splitA = versionA.Split('.');
-                int majorA = int.Parse(splitA[0]);
-                int minorA = int.Parse(splitA[1]);
-                int patchA = 0;
+                var splitA = versionA.Split('.');
+                var majorA = int.Parse(splitA[0]);
+                var minorA = int.Parse(splitA[1]);
+                var patchA = 0;
                 if (splitA.Length >= 3)
                 {
                     patchA = int.Parse(splitA[2]);
                 }
-                int buildA = 0;
+                var buildA = 0;
                 if (splitA.Length >= 4)
                 {
                     buildA = int.Parse(splitA[3]);
                 }
 
-                string[] splitStringsB = versionB.Split('-');
+                var splitStringsB = versionB.Split('-');
                 versionB = splitStringsB[0];
-                string prereleaseB = string.Empty;
+                var prereleaseB = string.Empty;
 
                 if (splitStringsB.Length > 1)
                 {
                     prereleaseB = splitStringsB[1];
-                    for (int i = 2; i < splitStringsB.Length; i++)
+                    for (var i = 2; i < splitStringsB.Length; i++)
                     {
                         prereleaseB += "-" + splitStringsB[i];
                     }
                 }
 
-                string[] splitB = versionB.Split('.');
-                int majorB = int.Parse(splitB[0]);
-                int minorB = int.Parse(splitB[1]);
-                int patchB = 0;
+                var splitB = versionB.Split('.');
+                var majorB = int.Parse(splitB[0]);
+                var minorB = int.Parse(splitB[1]);
+                var patchB = 0;
                 if (splitB.Length >= 3)
                 {
                     patchB = int.Parse(splitB[2]);
                 }
-                int buildB = 0;
+                var buildB = 0;
                 if (splitB.Length >= 4)
                 {
                     buildB = int.Parse(splitB[3]);
                 }
 
-                int major = majorA < majorB ? -1 : majorA > majorB ? 1 : 0;
-                int minor = minorA < minorB ? -1 : minorA > minorB ? 1 : 0;
-                int patch = patchA < patchB ? -1 : patchA > patchB ? 1 : 0;
-                int build = buildA < buildB ? -1 : buildA > buildB ? 1 : 0;
-                int prerelease = string.Compare(prereleaseA, prereleaseB);
+                var major = majorA < majorB ? -1 : majorA > majorB ? 1 : 0;
+                var minor = minorA < minorB ? -1 : minorA > minorB ? 1 : 0;
+                var patch = patchA < patchB ? -1 : patchA > patchB ? 1 : 0;
+                var build = buildA < buildB ? -1 : buildA > buildB ? 1 : 0;
+                var prerelease = string.Compare(prereleaseA, prereleaseB);
 
                 if (major == 0)
                 {

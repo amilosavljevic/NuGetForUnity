@@ -60,11 +60,11 @@
         /// <param name="filepath">The filepath to where this NuGet.config will be saved.</param>
         public void Save(string filepath)
         {
-            XDocument configFile = new XDocument();
+            var configFile = new XDocument();
 
-            XElement packageSources = new XElement("packageSources");
-            XElement disabledPackageSources = new XElement("disabledPackageSources");
-            XElement packageSourceCredentials = new XElement("packageSourceCredentials");
+            var packageSources = new XElement("packageSources");
+            var disabledPackageSources = new XElement("disabledPackageSources");
+            var packageSourceCredentials = new XElement("packageSourceCredentials");
 
             XElement addElement;
 
@@ -86,7 +86,7 @@
 
                 if (source.HasPassword)
                 {
-                    XElement sourceElement = new XElement(source.Name);
+                    var sourceElement = new XElement(source.Name);
                     packageSourceCredentials.Add(sourceElement);
 
                     addElement = new XElement("add");
@@ -102,13 +102,13 @@
             }
 
             // save the active package source (may be an aggregate)
-            XElement activePackageSource = new XElement("activePackageSource");
+            var activePackageSource = new XElement("activePackageSource");
             addElement = new XElement("add");
             addElement.Add(new XAttribute("key", "All"));
             addElement.Add(new XAttribute("value", "(Aggregate source)"));
             activePackageSource.Add(addElement);
 
-            XElement config = new XElement("config");
+            var config = new XElement("config");
 
             // save the un-expanded respository path
             addElement = new XElement("add");
@@ -146,7 +146,7 @@
                 config.Add(addElement);
             }
 
-            XElement configuration = new XElement("configuration");
+            var configuration = new XElement("configuration");
             configuration.Add(packageSources);
             configuration.Add(disabledPackageSources);
             configuration.Add(packageSourceCredentials);
@@ -158,7 +158,7 @@
             // remove the read only flag on the file, if there is one.
             if (File.Exists(filepath))
             {
-                FileAttributes attributes = File.GetAttributes(filepath);
+                var attributes = File.GetAttributes(filepath);
 
                 if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
                 {
@@ -177,15 +177,15 @@
         /// <returns>The newly loaded <see cref="NugetConfigFile"/>.</returns>
         public static NugetConfigFile Load(string filePath)
         {
-            NugetConfigFile configFile = new NugetConfigFile();
+            var configFile = new NugetConfigFile();
             configFile.PackageSources = new List<NugetPackageSource>();
             configFile.InstallFromCache = true;
             configFile.ReadOnlyPackageFiles = true;
 
-            XDocument file = XDocument.Load(filePath);
+            var file = XDocument.Load(filePath);
 
             // read the full list of package sources (some may be disabled below)
-            XElement packageSources = file.Root.Element("packageSources");
+            var packageSources = file.Root.Element("packageSources");
             if (packageSources != null)
             {
                 var adds = packageSources.Elements("add");
@@ -196,7 +196,7 @@
             }
 
             // read the active package source (may be an aggregate of all enabled sources!)
-            XElement activePackageSource = file.Root.Element("activePackageSource");
+            var activePackageSource = file.Root.Element("activePackageSource");
             if (activePackageSource != null)
             {
                 var add = activePackageSource.Element("add");
@@ -204,14 +204,14 @@
             }
 
             // disable all listed disabled package sources
-            XElement disabledPackageSources = file.Root.Element("disabledPackageSources");
+            var disabledPackageSources = file.Root.Element("disabledPackageSources");
             if (disabledPackageSources != null)
             {
                 var adds = disabledPackageSources.Elements("add");
                 foreach (var add in adds)
                 {
-                    string name = add.Attribute("key").Value;
-                    string disabled = add.Attribute("value").Value;
+                    var name = add.Attribute("key").Value;
+                    var disabled = add.Attribute("value").Value;
                     if (String.Equals(disabled, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         var source = configFile.PackageSources.FirstOrDefault(p => p.Name == name);
@@ -224,12 +224,12 @@
             }
 
             // set all listed passwords for package source credentials
-            XElement packageSourceCredentials = file.Root.Element("packageSourceCredentials");
+            var packageSourceCredentials = file.Root.Element("packageSourceCredentials");
             if (packageSourceCredentials != null)
             {
                 foreach (var sourceElement in packageSourceCredentials.Elements())
                 {
-                    string name = sourceElement.Name.LocalName;
+                    var name = sourceElement.Name.LocalName;
                     var source = configFile.PackageSources.FirstOrDefault(p => p.Name == name);
                     if (source != null)
                     {
@@ -238,13 +238,13 @@
                         {
                             if (string.Equals(add.Attribute("key").Value, "userName", StringComparison.OrdinalIgnoreCase))
                             {
-                                string userName = add.Attribute("value").Value;
+                                var userName = add.Attribute("value").Value;
                                 source.UserName = userName;
                             }
 
                             if (string.Equals(add.Attribute("key").Value, "clearTextPassword", StringComparison.OrdinalIgnoreCase))
                             {
-                                string password = add.Attribute("value").Value;
+                                var password = add.Attribute("value").Value;
                                 source.SavedPassword = password;
                             }
                         }
@@ -253,14 +253,14 @@
             }
 
             // read the configuration data
-            XElement config = file.Root.Element("config");
+            var config = file.Root.Element("config");
             if (config != null)
             {
                 var adds = config.Elements("add");
                 foreach (var add in adds)
                 {
-                    string key = add.Attribute("key").Value;
-                    string value = add.Attribute("value").Value;
+                    var key = add.Attribute("key").Value;
+                    var value = add.Attribute("value").Value;
 
                     if (String.Equals(key, "repositoryPath", StringComparison.OrdinalIgnoreCase))
                     {
@@ -269,7 +269,7 @@
 
                         if (!Path.IsPathRooted(configFile.RepositoryPath))
                         {
-                            string repositoryPath = Path.Combine(UnityEngine.Application.dataPath, configFile.RepositoryPath);
+                            var repositoryPath = Path.Combine(UnityEngine.Application.dataPath, configFile.RepositoryPath);
                             repositoryPath = Path.GetFullPath(repositoryPath);
 
                             configFile.RepositoryPath = repositoryPath;

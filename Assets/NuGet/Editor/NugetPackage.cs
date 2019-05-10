@@ -91,7 +91,7 @@
         /// <returns>The newly created <see cref="NugetPackage"/>.</returns>
         public static NugetPackage FromNuspec(NuspecFile nuspec)
         {
-            NugetPackage package = new NugetPackage();
+            var package = new NugetPackage();
 
             package.Id = nuspec.Id;
             package.Version = nuspec.Version;
@@ -136,7 +136,7 @@
         /// <returns>The <see cref="NugetPackage"/> loaded from the .nupkg file.</returns>
         public static NugetPackage FromNupkgFile(string nupkgFilepath)
         {
-            NugetPackage package = FromNuspec(NuspecFile.FromNupkgFile(nupkgFilepath));
+            var package = FromNuspec(NuspecFile.FromNupkgFile(nupkgFilepath));
             package.DownloadUrl = nupkgFilepath;
             return package;
         }

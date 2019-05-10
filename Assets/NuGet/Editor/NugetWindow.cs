@@ -98,7 +98,7 @@
         /// <summary>
         /// The number of packages to get from the request to the server.
         /// </summary>
-        private int numberToGet = 15;
+        private const int numberToGet = 15;
 
         /// <summary>
         /// The number of packages to skip when requesting a list of packages from the server.  This is used to get a new group of packages.
@@ -125,7 +125,7 @@
         /// <summary>
         /// Used to keep track of which packages the user has opened the clone window on.
         /// </summary>
-        private HashSet<NugetPackage> openCloneWindows = new HashSet<NugetPackage>();
+        private readonly HashSet<NugetPackage> openCloneWindows = new HashSet<NugetPackage>();
 
         private IEnumerable<NugetPackage> FilteredInstalledPackages
         {
@@ -167,12 +167,12 @@
             var preferencesWindowSection = assembly.GetType("UnityEditor.PreferencesWindow+Section"); // access nested class via + instead of .         
 
             // open the preferences window
-            EditorWindow preferencesEditorWindow = EditorWindow.GetWindowWithRect(preferencesWindow, new Rect(100f, 100f, 500f, 400f), true, "Unity Preferences");
+            var preferencesEditorWindow = GetWindowWithRect(preferencesWindow, new Rect(100f, 100f, 500f, 400f), true, "Unity Preferences");
             //preferencesEditorWindow.m_Parent.window.m_DontSaveToLayout = true; //<-- Unity's implementation also does this
 
             // Get the flag to see if custom sections have already been added
             var m_RefreshCustomPreferences = preferencesWindow.GetField("m_RefreshCustomPreferences", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            bool refesh = (bool)m_RefreshCustomPreferences.GetValue(preferencesEditorWindow);
+            var refesh = (bool)m_RefreshCustomPreferences.GetValue(preferencesEditorWindow);
 
             if (refesh)
             {
@@ -186,19 +186,19 @@
 
             // get the List<PreferencesWindow.Section> m_Sections.Count
             var m_Sections = preferencesWindow.GetField("m_Sections", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            object list = m_Sections.GetValue(preferencesEditorWindow);
+            var list = m_Sections.GetValue(preferencesEditorWindow);
             var sectionList = typeof(List<>).MakeGenericType(new Type[] { preferencesWindowSection });
             var getCount = sectionList.GetProperty("Count").GetGetMethod(true);
-            int count = (int)getCount.Invoke(list, null);
+            var count = (int)getCount.Invoke(list, null);
             //Debug.LogFormat("Count = {0}", count);
 
             // Figure out the index of the NuGet for Unity preferences
             var getItem = sectionList.GetMethod("get_Item");
-            int nugetIndex = 0;
-            for (int i = 0; i < count; i++)
+            var nugetIndex = 0;
+            for (var i = 0; i < count; i++)
             {
                 var section = getItem.Invoke(list, new object[] { i });
-                GUIContent content = (GUIContent)section.GetType().GetField("content", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance).GetValue(section);
+                var content = (GUIContent)section.GetType().GetField("content", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance).GetValue(section);
                 if (content != null && content.text == "NuGet For Unity")
                 {
                     nugetIndex = i;
@@ -223,14 +223,9 @@
         protected static void CheckForUpdates()
         {
             const string url = "https://github.com/GlitchEnzo/NuGetForUnity/releases";
-#if UNITY_2017_1_OR_NEWER // UnityWebRequest is not available in Unity 5.2, which is the currently the earliest version supported by NuGetForUnity.
-            using (UnityWebRequest request = UnityWebRequest.Get(url))
+            using (var request = UnityWebRequest.Get(url))
             {
-                request.Send();
-#else
-            using (WWW request = new WWW(url))
-            {
-#endif
+                request.SendWebRequest();
 
                 NugetHelper.LogVerbose("HTTP GET {0}", url);
                 while (!request.isDone)
@@ -243,17 +238,10 @@
                 string latestVersionDownloadUrl = null;
 
                 string response = null;
-#if UNITY_2017_1_OR_NEWER
                 if (!request.isNetworkError && !request.isHttpError)
                 {
                     response = request.downloadHandler.text;
                 }
-#else
-                if (request.error == null)
-                {
-                    response = request.text;
-                }
-#endif
 
                 if (response != null)
                 {
@@ -264,18 +252,18 @@
                 {
                     EditorUtility.DisplayDialog(
                             "Unable to Determine Updates",
-                            string.Format("Couldn't find release information at {0}.", url),
+							$"Couldn't find release information at {url}.",
                             "OK");
                     return;
                 }
 
-                NugetPackageIdentifier current = new NugetPackageIdentifier("NuGetForUnity", NugetPreferences.NuGetForUnityVersion);
-                NugetPackageIdentifier latest = new NugetPackageIdentifier("NuGetForUnity", latestVersion);
+                var current = new NugetPackageIdentifier("NuGetForUnity", NugetPreferences.NuGetForUnityVersion);
+                var latest = new NugetPackageIdentifier("NuGetForUnity", latestVersion);
                 if (current >= latest)
                 {
                     EditorUtility.DisplayDialog(
                             "No Updates Available",
-                            string.Format("Your version of NuGetForUnity is up to date.\nVersion {0}.", NugetPreferences.NuGetForUnityVersion),
+							$"Your version of NuGetForUnity is up to date.\nVersion {NugetPreferences.NuGetForUnityVersion}.",
                             "OK");
                     return;
                 }
@@ -283,7 +271,7 @@
                 // New version is available. Give user options for installing it.
                 switch (EditorUtility.DisplayDialogComplex(
                         "Update Available",
-                        string.Format("Current Version: {0}\nLatest Version: {1}", NugetPreferences.NuGetForUnityVersion, latestVersion),
+						$"Current Version: {NugetPreferences.NuGetForUnityVersion}\nLatest Version: {latestVersion}",
                         "Install Latest",
                         "Open Releases Page",
                         "Cancel"))
@@ -401,14 +389,14 @@
         /// <param name="height"></param>
         /// <param name="col"></param>
         /// <returns></returns>
-        private Texture2D MakeTex(int width, int height, Color col)
+        private static Texture2D MakeTex(int width, int height, Color col)
         {
-            Color[] pix = new Color[width * height];
+            var pix = new Color[width * height];
 
-            for (int i = 0; i < pix.Length; i++)
+            for (var i = 0; i < pix.Length; i++)
                 pix[i] = col;
 
-            Texture2D result = new Texture2D(width, height);
+            var result = new Texture2D(width, height);
             result.SetPixels(pix);
             result.Apply();
 
@@ -420,7 +408,7 @@
         /// </summary>
         protected void OnGUI()
         {
-            int selectedTab = GUILayout.Toolbar(currentTab, tabTitles);
+            var selectedTab = GUILayout.Toolbar(currentTab, tabTitles);
 
             if (selectedTab != currentTab)
                 OnTabChanged();
@@ -450,10 +438,10 @@
         /// Creates a GUI style with a contrasting background color based upon if the Unity Editor is the free (light) skin or the Pro (dark) skin.
         /// </summary>
         /// <returns>A GUI style with the appropriate background color set.</returns>
-        private GUIStyle GetContrastStyle()
+        private static GUIStyle GetContrastStyle()
         {
-            GUIStyle style = new GUIStyle();
-            Color backgroundColor = EditorGUIUtility.isProSkin ? new Color(0.3f, 0.3f, 0.3f) : new Color(0.6f, 0.6f, 0.6f);
+            var style = new GUIStyle();
+            var backgroundColor = EditorGUIUtility.isProSkin ? new Color(0.3f, 0.3f, 0.3f) : new Color(0.6f, 0.6f, 0.6f);
             style.normal.background = MakeTex(16, 16, backgroundColor); 
             return style;
         }
@@ -462,10 +450,10 @@
         /// Creates a GUI style with a background color the same as the editor's current background color.
         /// </summary>
         /// <returns>A GUI style with the appropriate background color set.</returns>
-        private GUIStyle GetBackgroundStyle()
+        private static GUIStyle GetBackgroundStyle()
         {
-            GUIStyle style = new GUIStyle();
-            Color32 backgroundColor = EditorGUIUtility.isProSkin ? new Color32(56, 56, 56, 255) : new Color32(194, 194, 194, 255);
+            var style = new GUIStyle();
+            var backgroundColor = EditorGUIUtility.isProSkin ? new Color32(56, 56, 56, 255) : new Color32(194, 194, 194, 255);
             style.normal.background = MakeTex(16, 16, backgroundColor); 
             return style;
         }
@@ -480,8 +468,6 @@
             // display all of the installed packages
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             EditorGUILayout.BeginVertical();
-
-            GUIStyle style = GetContrastStyle();
 
             if (filteredUpdatePackages != null && filteredUpdatePackages.Count > 0)
             {
@@ -511,8 +497,8 @@
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             EditorGUILayout.BeginVertical();
 
-            List<NugetPackage> filteredInstalledPackages = FilteredInstalledPackages.ToList();
-            if (filteredInstalledPackages != null && filteredInstalledPackages.Count > 0)
+            var filteredInstalledPackages = FilteredInstalledPackages.ToList();
+            if (filteredInstalledPackages.Count > 0)
             {
                 DrawPackages(filteredInstalledPackages);
             }
@@ -540,12 +526,9 @@
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             EditorGUILayout.BeginVertical();
 
-            if (availablePackages != null)
-            {
-                DrawPackages(availablePackages);
-            }
+			DrawPackages(availablePackages);
 
-            GUIStyle showMoreStyle = new GUIStyle();
+            var showMoreStyle = new GUIStyle();
             if (Application.HasProLicense())
             {
                 showMoreStyle.normal.background = MakeTex(20, 20, new Color(0.05f, 0.05f, 0.05f));
@@ -570,17 +553,17 @@
 
         private void DrawPackages(List<NugetPackage> packages)
         {
-            GUIStyle backgroundStyle = GetBackgroundStyle();
-            GUIStyle contrastStyle = GetContrastStyle();
+            var backgroundStyle = GetBackgroundStyle();
+            var contrastStyle = GetContrastStyle();
 
-            for (int i = 0; i < packages.Count; i++)
+            for (var i = 0; i < packages.Count; i++)
             {
                 EditorGUILayout.BeginVertical(backgroundStyle);
                 DrawPackage(packages[i], backgroundStyle, contrastStyle);
                 EditorGUILayout.EndVertical();
 
                 // swap styles
-                GUIStyle tempStyle = backgroundStyle;
+                var tempStyle = backgroundStyle;
                 backgroundStyle = contrastStyle;
                 contrastStyle = tempStyle;
             }
@@ -591,7 +574,7 @@
         /// </summary>
         private void DrawOnlineHeader()
         {
-            GUIStyle headerStyle = new GUIStyle();
+            var headerStyle = new GUIStyle();
             if (Application.HasProLicense())
             {
                 headerStyle.normal.background = MakeTex(20, 20, new Color(0.05f, 0.05f, 0.05f));
@@ -605,7 +588,7 @@
             {
                 EditorGUILayout.BeginHorizontal();
                 {
-                    bool showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", showAllOnlineVersions);
+                    var showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", showAllOnlineVersions);
                     if (showAllVersionsTemp != showAllOnlineVersions)
                     {
                         showAllOnlineVersions = showAllVersionsTemp;
@@ -619,18 +602,18 @@
                 }
                 EditorGUILayout.EndHorizontal();
 
-                bool showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", showOnlinePrerelease);
+                var showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", showOnlinePrerelease);
                 if (showPrereleaseTemp != showOnlinePrerelease)
                 {
                     showOnlinePrerelease = showPrereleaseTemp;
                     UpdateOnlinePackages();
                 }
 
-                bool enterPressed = Event.current.Equals(Event.KeyboardEvent("return"));
+                var enterPressed = Event.current.Equals(Event.KeyboardEvent("return"));
 
                 EditorGUILayout.BeginHorizontal();
                 {
-                    int oldFontSize = GUI.skin.textField.fontSize;
+                    var oldFontSize = GUI.skin.textField.fontSize;
                     GUI.skin.textField.fontSize = 25;
                     onlineSearchTerm = EditorGUILayout.TextField(onlineSearchTerm, GUILayout.Height(30));
 
@@ -660,7 +643,7 @@
         /// </summary>
         private void DrawInstalledHeader()
         {
-            GUIStyle headerStyle = new GUIStyle();
+            var headerStyle = new GUIStyle();
             if (Application.HasProLicense())
             {
                 headerStyle.normal.background = MakeTex(20, 20, new Color(0.05f, 0.05f, 0.05f));
@@ -672,11 +655,11 @@
 
             EditorGUILayout.BeginVertical(headerStyle);
             {
-                bool enterPressed = Event.current.Equals(Event.KeyboardEvent("return"));
+                var enterPressed = Event.current.Equals(Event.KeyboardEvent("return"));
 
                 EditorGUILayout.BeginHorizontal();
                 {
-                    int oldFontSize = GUI.skin.textField.fontSize;
+                    var oldFontSize = GUI.skin.textField.fontSize;
                     GUI.skin.textField.fontSize = 25;
                     installedSearchTermEditBox = EditorGUILayout.TextField(installedSearchTermEditBox, GUILayout.Height(30));
 
@@ -704,7 +687,7 @@
         /// </summary>
         private void DrawUpdatesHeader()
         {
-            GUIStyle headerStyle = new GUIStyle();
+            var headerStyle = new GUIStyle();
             if (Application.HasProLicense())
             {
                 headerStyle.normal.background = MakeTex(20, 20, new Color(0.05f, 0.05f, 0.05f));
@@ -718,7 +701,7 @@
             {
                 EditorGUILayout.BeginHorizontal();
                 {
-                    bool showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", showAllUpdateVersions);
+                    var showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", showAllUpdateVersions);
                     if (showAllVersionsTemp != showAllUpdateVersions)
                     {
                         showAllUpdateVersions = showAllVersionsTemp;
@@ -734,18 +717,18 @@
                 }
                 EditorGUILayout.EndHorizontal();
 
-                bool showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", showPrereleaseUpdates);
+                var showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", showPrereleaseUpdates);
                 if (showPrereleaseTemp != showPrereleaseUpdates)
                 {
                     showPrereleaseUpdates = showPrereleaseTemp;
                     UpdateUpdatePackages();
                 }
 
-                bool enterPressed = Event.current.Equals(Event.KeyboardEvent("return"));
+                var enterPressed = Event.current.Equals(Event.KeyboardEvent("return"));
 
                 EditorGUILayout.BeginHorizontal();
                 {
-                    int oldFontSize = GUI.skin.textField.fontSize;
+                    var oldFontSize = GUI.skin.textField.fontSize;
                     GUI.skin.textField.fontSize = 25;
                     updatesSearchTerm = EditorGUILayout.TextField(updatesSearchTerm, GUILayout.Height(30));
 
@@ -776,8 +759,8 @@
         /// </summary>
         /// <param name="package">The <see cref="NugetPackage"/> to draw.</param>
         private void DrawPackage(NugetPackage package, GUIStyle packageStyle, GUIStyle contrastStyle)
-        {
-            IEnumerable<NugetPackage> installedPackages = NugetHelper.InstalledPackages;
+		{
+			var installedPackages = NugetHelper.InstalledPackages;
             var installed = installedPackages.FirstOrDefault(p => p.Id == package.Id);
 
             EditorGUILayout.BeginHorizontal();
@@ -791,7 +774,7 @@
                 {
                     const int iconSize = 32;
                     const int leftPadding = 5;
-                    Rect rect = GUILayoutUtility.GetRect(iconSize, iconSize);
+                    var rect = GUILayoutUtility.GetRect(iconSize, iconSize);
                     // only use GetRect's Y position.  It doesn't correctly set the width or X position.
                     rect.x = leftPadding;
                     rect.y += 3;
@@ -838,7 +821,7 @@
                         if (installed < package)
                         {
                             // An older version is installed
-                            if (GUILayout.Button(string.Format("Update to [{0}]", package.Version), installButtonWidth, installButtonHeight))
+                            if (GUILayout.Button($"Update to [{package.Version}]", installButtonWidth, installButtonHeight))
                             {
                                 NugetHelper.Update(installed, package);
                                 NugetHelper.UpdateInstalledPackages();
@@ -848,7 +831,7 @@
                         else if (installed > package)
                         {
                             // A newer version is installed
-                            if (GUILayout.Button(string.Format("Downgrade to [{0}]", package.Version), installButtonWidth, installButtonHeight))
+                            if (GUILayout.Button($"Downgrade to [{package.Version}]", installButtonWidth, installButtonHeight))
                             {
                                 NugetHelper.Update(installed, package);
                                 NugetHelper.UpdateInstalledPackages();
@@ -877,7 +860,7 @@
                     // Show the package description
                     EditorStyles.label.wordWrap = true;
                     EditorStyles.label.fontStyle = FontStyle.Normal;
-                    EditorGUILayout.LabelField(string.Format("{0}", package.Description));
+                    EditorGUILayout.LabelField($"{package.Description}");
 
                     // Show project URL link
                     if (!string.IsNullOrEmpty(package.ProjectUrl))
@@ -891,9 +874,9 @@
                     {
                         EditorStyles.label.wordWrap = true;
                         EditorStyles.label.fontStyle = FontStyle.Bold;
-                        EditorGUILayout.LabelField(string.Format("Release Notes:"));
+                        EditorGUILayout.LabelField("Release Notes:");
                         EditorStyles.label.fontStyle = FontStyle.Normal;
-                        EditorGUILayout.LabelField(string.Format("{0}", package.ReleaseNotes));
+                        EditorGUILayout.LabelField($"{package.ReleaseNotes}");
                     }
 
                     // Show the dependencies
@@ -901,34 +884,37 @@
                     {
                         EditorStyles.label.wordWrap = true;
                         EditorStyles.label.fontStyle = FontStyle.Italic;
-                        StringBuilder builder = new StringBuilder();
+                        var builder = new StringBuilder();
                         foreach (var dependency in package.Dependencies)
                         {
-                            builder.Append(string.Format(" {0} {1};", dependency.Id, dependency.Version));
+                            builder.Append($" {dependency.Id} {dependency.Version};");
                         }
                         EditorGUILayout.Space();
-                        EditorGUILayout.LabelField(string.Format("Depends on:{0}", builder.ToString()));
+                        EditorGUILayout.LabelField($"Depends on:{builder}");
                         EditorStyles.label.fontStyle = FontStyle.Normal;
                     }
 
                     // Create the style for putting a box around the 'Clone' button
-                    var cloneButtonBoxStyle = new GUIStyle("box");
-                    cloneButtonBoxStyle.stretchWidth = false;
-                    cloneButtonBoxStyle.margin.top = 0;
-                    cloneButtonBoxStyle.margin.bottom = 0;
-                    cloneButtonBoxStyle.padding.bottom = 4;
+					var cloneButtonBoxStyle = new GUIStyle("box")
+					{
+						stretchWidth = false,
+						margin =
+						{
+							top = 0,
+							bottom = 0
+						},
+						padding = {bottom = 4}
+					};
 
-                    var normalButtonBoxStyle = new GUIStyle(cloneButtonBoxStyle);
-                    normalButtonBoxStyle.normal.background = packageStyle.normal.background;
+					var normalButtonBoxStyle = new GUIStyle(cloneButtonBoxStyle) {normal = {background = packageStyle.normal.background}};
 
-                    bool showCloneWindow = openCloneWindows.Contains(package);
+					var showCloneWindow = openCloneWindows.Contains(package);
                     cloneButtonBoxStyle.normal.background = showCloneWindow ? contrastStyle.normal.background : packageStyle.normal.background;
 
                     // Create a simillar style for the 'Clone' window
-                    var cloneWindowStyle = new GUIStyle(cloneButtonBoxStyle);
-                    cloneWindowStyle.padding = new RectOffset(6, 6, 2, 6);
+					var cloneWindowStyle = new GUIStyle(cloneButtonBoxStyle) {padding = new RectOffset(6, 6, 2, 6)};
 
-                    // Show button bar
+					// Show button bar
                     EditorGUILayout.BeginHorizontal();
                     {
                         if (package.RepositoryType == RepositoryType.Git || package.RepositoryType == RepositoryType.TfsGit)
@@ -1002,7 +988,7 @@
                             EditorGUILayout.BeginHorizontal();
                             {
                                 // Create the three commands a user will need to run to get the repo @ the commit. Intentionally leave off the last newline for better UI appearance
-                                string commands = string.Format("git clone {0} {1} --no-checkout{2}cd {1}{2}git checkout {3}",  package.RepositoryUrl, package.Id, Environment.NewLine, package.RepositoryCommit);
+                                var commands = string.Format("git clone {0} {1} --no-checkout{2}cd {1}{2}git checkout {3}",  package.RepositoryUrl, package.Id, Environment.NewLine, package.RepositoryCommit);
 
                                 if (GUILayout.Button("Copy", GUILayout.ExpandWidth(false)))
                                 {
@@ -1029,9 +1015,8 @@
 
                 if (installed != null)
                 {
-                    GUIStyle labelStyle = new GUIStyle(EditorStyles.label);
-                    labelStyle.alignment = TextAnchor.UpperRight;
-                    GUILayout.Label(string.Format("currently [{0}]  ", installed.Version), labelStyle, installButtonWidth);
+					var labelStyle = new GUIStyle(EditorStyles.label) {alignment = TextAnchor.UpperRight};
+					GUILayout.Label($"currently [{installed.Version}]  ", labelStyle, installButtonWidth);
                 }
             }
             EditorGUILayout.EndHorizontal();
@@ -1039,16 +1024,18 @@
 
         public static void GUILayoutLink(string url)
         {
-            GUIStyle hyperLinkStyle = new GUIStyle(GUI.skin.label);
-            hyperLinkStyle.stretchWidth = false;
-            hyperLinkStyle.richText = true;
+			var hyperLinkStyle = new GUIStyle(GUI.skin.label)
+			{
+				stretchWidth = false,
+				richText = true
+			};
 
-            string colorFormatString = "<color=#add8e6ff>{0}</color>";
+			var colorFormatString = "<color=#add8e6ff>{0}</color>";
 
-            string underline = new string('_', url.Length);
+            var underline = new string('_', url.Length);
 
-            string formattedUrl = string.Format(colorFormatString, url);
-            string formattedUnderline = string.Format(colorFormatString, underline);
+            var formattedUrl = string.Format(colorFormatString, url);
+            var formattedUnderline = string.Format(colorFormatString, underline);
             var urlRect = GUILayoutUtility.GetRect(new GUIContent(url), hyperLinkStyle);
             GUI.Label(urlRect, formattedUrl, hyperLinkStyle);
             GUI.Label(urlRect, formattedUnderline, hyperLinkStyle);

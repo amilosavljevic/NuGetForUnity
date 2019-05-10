@@ -69,9 +69,9 @@
 
                 NugetHelper.UpdateInstalledPackages();
                 installedPackages = NugetHelper.InstalledPackages.ToList();
-                List<string> installedPackageNames = new List<string>();
+                var installedPackageNames = new List<string>();
 
-                foreach (NugetPackage package in installedPackages)
+                foreach (var package in installedPackages)
                 {
                     if (!expanded.ContainsKey(package))
                     {
@@ -105,9 +105,9 @@
             roots = new List<NugetPackage>(installedPackages);
 
             // remove a package as a root if another package is dependent on it
-            foreach (NugetPackage package in installedPackages)
+            foreach (var package in installedPackages)
             {
-                foreach (NugetPackageIdentifier dependency in package.Dependencies)
+                foreach (var dependency in package.Dependencies)
                 {
                     roots.RemoveAll(p => p.Id == dependency.Id);
                 }
@@ -125,7 +125,7 @@
             {
                 case 0:
                     scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
-                    foreach (NugetPackage package in roots)
+                    foreach (var package in roots)
                     {
                         DrawPackage(package);
                     }
@@ -138,7 +138,7 @@
                     EditorStyles.label.fontStyle = FontStyle.Normal;
                     EditorStyles.label.fontSize = 10;
                     EditorGUI.indentLevel++;
-                    int newIndex = EditorGUILayout.Popup(selectedPackageIndex, installedPackageIds);
+                    var newIndex = EditorGUILayout.Popup(selectedPackageIndex, installedPackageIds);
                     EditorGUI.indentLevel--;
 
                     if (newIndex != selectedPackageIndex)
@@ -146,7 +146,7 @@
                         selectedPackageIndex = newIndex;
 
                         parentPackages.Clear();
-                        NugetPackage selectedPackage = installedPackages[selectedPackageIndex];
+                        var selectedPackage = installedPackages[selectedPackageIndex];
                         foreach (var package in installedPackages)
                         {
                             foreach (var dependency in package.Dependencies)
@@ -188,7 +188,7 @@
 
         private void DrawDepencency(NugetPackageIdentifier dependency)
         {
-            NugetPackage fullDependency = installedPackages.Find(p => p.Id == dependency.Id);
+            var fullDependency = installedPackages.Find(p => p.Id == dependency.Id);
             if (fullDependency != null)
             {
                 DrawPackage(fullDependency);
@@ -203,12 +203,12 @@
         {
             if (package.Dependencies != null && package.Dependencies.Count > 0)
             {
-                expanded[package] = EditorGUILayout.Foldout(expanded[package], string.Format("{0} {1}", package.Id, package.Version));
+                expanded[package] = EditorGUILayout.Foldout(expanded[package], $"{package.Id} {package.Version}");
 
                 if (expanded[package])
                 {
                     EditorGUI.indentLevel++;
-                    foreach (NugetPackageIdentifier dependency in package.Dependencies)
+                    foreach (var dependency in package.Dependencies)
                     {
                         DrawDepencency(dependency);
                     }
@@ -217,7 +217,7 @@
             }
             else
             {
-                EditorGUILayout.LabelField(string.Format("{0} {1}", package.Id, package.Version));
+                EditorGUILayout.LabelField($"{package.Id} {package.Version}");
             }
         }
     }

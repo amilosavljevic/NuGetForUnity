@@ -22,7 +22,7 @@
         /// <param name="package">The NugetPackage to add to the packages.config file.</param>
         public void AddPackage(NugetPackageIdentifier package)
         {
-            NugetPackageIdentifier existingPackage = Packages.Find(p => p.Id.ToLower() == package.Id.ToLower());
+            var existingPackage = Packages.Find(p => p.Id.ToLower() == package.Id.ToLower());
             if (existingPackage != null)
             {
                 if (existingPackage < package)
@@ -57,7 +57,7 @@
         /// <returns>A newly created <see cref="PackagesConfigFile"/>.</returns>
         public static PackagesConfigFile Load(string filepath)
         {
-            PackagesConfigFile configFile = new PackagesConfigFile();
+            var configFile = new PackagesConfigFile();
             configFile.Packages = new List<NugetPackageIdentifier>();
 
             // Create a package.config file, if there isn't already one in the project
@@ -70,10 +70,10 @@
                 AssetDatabase.Refresh();
             }
 
-            XDocument packagesFile = XDocument.Load(filepath);
+            var packagesFile = XDocument.Load(filepath);
             foreach (var packageElement in packagesFile.Root.Elements())
             {
-                NugetPackage package = new NugetPackage();
+                var package = new NugetPackage();
                 package.Id = packageElement.Attribute("id").Value;
                 package.Version = packageElement.Attribute("version").Value;
                 configFile.Packages.Add(package);
@@ -102,11 +102,11 @@
                     return x.Id.CompareTo(y.Id);
             });
 
-            XDocument packagesFile = new XDocument();
+            var packagesFile = new XDocument();
             packagesFile.Add(new XElement("packages"));
             foreach (var package in Packages)
             {
-                XElement packageElement = new XElement("package");
+                var packageElement = new XElement("package");
                 packageElement.Add(new XAttribute("id", package.Id));
                 packageElement.Add(new XAttribute("version", package.Version));
                 packagesFile.Root.Add(packageElement);
@@ -115,7 +115,7 @@
             // remove the read only flag on the file, if there is one.
             if (File.Exists(filepath))
             {
-                FileAttributes attributes = File.GetAttributes(filepath);
+                var attributes = File.GetAttributes(filepath);
 
                 if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
                 {

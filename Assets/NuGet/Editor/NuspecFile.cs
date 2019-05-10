@@ -120,17 +120,17 @@
         /// <returns>The .nuspec file loaded from inside the .nupkg file.</returns>
         public static NuspecFile FromNupkgFile(string nupkgFilepath)
         {
-            NuspecFile nuspec = new NuspecFile();
+            var nuspec = new NuspecFile();
 
             if (File.Exists(nupkgFilepath))
             {
                 // get the .nuspec file from inside the .nupkg
-                using (ZipFile zip = ZipFile.Read(nupkgFilepath))
+                using (var zip = ZipFile.Read(nupkgFilepath))
                 {
                     //var entry = zip[string.Format("{0}.nuspec", packageId)];
                     var entry = zip.First(x => x.FileName.EndsWith(".nuspec"));
 
-                    using (MemoryStream stream = new MemoryStream())
+                    using (var stream = new MemoryStream())
                     {
                         entry.Extract(stream);
                         stream.Position = 0;
@@ -145,7 +145,7 @@
 
                 //nuspec.Id = packageId;
                 //nuspec.Version = packageVersion;
-                nuspec.Description = string.Format("COULD NOT LOAD {0}", nupkgFilepath);
+                nuspec.Description = $"COULD NOT LOAD {nupkgFilepath}";
             }
 
             return nuspec;
@@ -169,7 +169,7 @@
         public static NuspecFile Load(Stream stream)
         {
             XmlReader reader = new XmlTextReader(stream);
-            XDocument document = XDocument.Load(reader);
+            var document = XDocument.Load(reader);
             return Load(document);
         }
 
@@ -180,12 +180,12 @@
         /// <returns>The newly loaded <see cref="NuspecFile"/>.</returns>
         public static NuspecFile Load(XDocument nuspecDocument)
         {
-            NuspecFile nuspec = new NuspecFile();
+            var nuspec = new NuspecFile();
 
-            string nuspecNamespace = nuspecDocument.Root.GetDefaultNamespace().ToString();
+            var nuspecNamespace = nuspecDocument.Root.GetDefaultNamespace().ToString();
 
-            XElement package = nuspecDocument.Element(XName.Get("package", nuspecNamespace));
-            XElement metadata = package.Element(XName.Get("metadata", nuspecNamespace));
+            var package = nuspecDocument.Element(XName.Get("package", nuspecNamespace));
+            var metadata = package.Element(XName.Get("metadata", nuspecNamespace));
 
             nuspec.Id = (string)metadata.Element(XName.Get("id", nuspecNamespace)) ?? string.Empty;
             nuspec.Version = (string)metadata.Element(XName.Get("version", nuspecNamespace)) ?? string.Empty;
@@ -217,7 +217,7 @@
             {
                 foreach (var dependencyElement in dependenciesElement.Elements(XName.Get("dependency", nuspecNamespace)))
                 {
-                    NugetPackageIdentifier dependency = new NugetPackageIdentifier();
+                    var dependency = new NugetPackageIdentifier();
                     dependency.Id = (string)dependencyElement.Attribute("id") ?? string.Empty;
                     dependency.Version = (string)dependencyElement.Attribute("version") ?? string.Empty;
                     nuspec.Dependencies.Add(dependency);
@@ -231,7 +231,7 @@
                 //UnityEngine.Debug.Log("Loading files!");
                 foreach (var fileElement in filesElement.Elements(XName.Get("file", nuspecNamespace)))
                 {
-                    NuspecContentFile file = new NuspecContentFile();
+                    var file = new NuspecContentFile();
                     file.Source = (string)fileElement.Attribute("src") ?? string.Empty;
                     file.Target = (string)fileElement.Attribute("target") ?? string.Empty;
                     nuspec.Files.Add(file);
@@ -249,10 +249,10 @@
         {
             // TODO: Set a namespace when saving
 
-            XDocument file = new XDocument();
-            XElement packageElement = new XElement("package");
+            var file = new XDocument();
+            var packageElement = new XElement("package");
             file.Add(packageElement);
-            XElement metadata = new XElement("metadata");
+            var metadata = new XElement("metadata");
 
             // required
             metadata.Add(new XElement("id", Id));
@@ -338,7 +338,7 @@
             // remove the read only flag on the file, if there is one.
             if (File.Exists(filePath))
             {
-                FileAttributes attributes = File.GetAttributes(filePath);
+                var attributes = File.GetAttributes(filePath);
 
                 if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
                 {

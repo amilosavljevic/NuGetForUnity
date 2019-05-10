@@ -24,7 +24,7 @@
         [PreferenceItem("NuGet For Unity")]
         public static void PreferencesGUI()
         {
-            EditorGUILayout.LabelField(string.Format("Version: {0}", NuGetForUnityVersion));
+            EditorGUILayout.LabelField($"Version: {NuGetForUnityVersion}");
 
             if (NugetHelper.NugetConfigFile == null)
             {
@@ -111,7 +111,7 @@
 
             if (sourceToMoveUp != null)
             {
-                int index = NugetHelper.NugetConfigFile.PackageSources.IndexOf(sourceToMoveUp);
+                var index = NugetHelper.NugetConfigFile.PackageSources.IndexOf(sourceToMoveUp);
                 if (index > 0)
                 {
                     NugetHelper.NugetConfigFile.PackageSources[index] = NugetHelper.NugetConfigFile.PackageSources[index - 1];
@@ -121,7 +121,7 @@
 
             if (sourceToMoveDown != null)
             {
-                int index = NugetHelper.NugetConfigFile.PackageSources.IndexOf(sourceToMoveDown);
+                var index = NugetHelper.NugetConfigFile.PackageSources.IndexOf(sourceToMoveDown);
                 if (index < NugetHelper.NugetConfigFile.PackageSources.Count - 1)
                 {
                     NugetHelper.NugetConfigFile.PackageSources[index] = NugetHelper.NugetConfigFile.PackageSources[index + 1];

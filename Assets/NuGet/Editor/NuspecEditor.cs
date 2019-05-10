@@ -37,11 +37,11 @@
         [MenuItem("Assets/NuGet/Create Nuspec File", false, 2000)]
         protected static void CreateNuspecFile()
         {
-            string filepath = Application.dataPath;
+            var filepath = Application.dataPath;
 
             if (Selection.activeObject != null && Selection.activeObject != Selection.activeGameObject)
             {
-                string selectedFile = AssetDatabase.GetAssetPath(Selection.activeObject);
+                var selectedFile = AssetDatabase.GetAssetPath(Selection.activeObject);
                 filepath = selectedFile.Substring("Assets/".Length);
                 filepath = Path.Combine(Application.dataPath, filepath);
             }
@@ -60,7 +60,7 @@
 
             Debug.LogFormat("Creating: {0}", filepath);
 
-            NuspecFile file = new NuspecFile();
+            var file = new NuspecFile();
             file.Id = "MyPackage";
             file.Version = "0.0.1";
             file.Authors = "Your Name";
@@ -76,7 +76,7 @@
             AssetDatabase.Refresh();
 
             // select the newly created .nuspec file
-            string dataPath = Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length);
+            var dataPath = Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length);
             Selection.activeObject = AssetDatabase.LoadMainAssetAtPath(filepath.Replace(dataPath, string.Empty));
 
             // automatically display the editor with the newly created .nuspec file
@@ -99,13 +99,13 @@
         [MenuItem("Assets/NuGet/Open Nuspec Editor", true, 2000)]
         protected static bool DisplayNuspecEditorValidation()
         {
-            bool isNuspec = false;
+            var isNuspec = false;
 
             var defaultAsset = Selection.activeObject as DefaultAsset;
             if (defaultAsset != null)
             {
                 var filepath = AssetDatabase.GetAssetPath(defaultAsset);
-                string dataPath = Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length);
+                var dataPath = Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length);
                 filepath = Path.Combine(dataPath, filepath);
 
                 isNuspec = Path.GetExtension(filepath) == ".nuspec";
@@ -139,7 +139,7 @@
             if (defaultAsset != null)
             {
                 var assetFilepath = AssetDatabase.GetAssetPath(defaultAsset);
-                string dataPath = Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length);
+                var dataPath = Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length);
                 assetFilepath = Path.Combine(dataPath, assetFilepath);
 
                 var isNuspec = Path.GetExtension(assetFilepath) == ".nuspec";
@@ -199,15 +199,15 @@
                         if (GUILayout.Button(new GUIContent("Automatically Fill Dependencies", "Populates the list of dependencies with the \"root\" NuGet packages currently installed in the project.")))
                         {
                             NugetHelper.UpdateInstalledPackages();
-                            List<NugetPackage> installedPackages = NugetHelper.InstalledPackages.ToList();
+                            var installedPackages = NugetHelper.InstalledPackages.ToList();
 
                             // default all packages to being roots
-                            List<NugetPackage> roots = new List<NugetPackage>(installedPackages);
+                            var roots = new List<NugetPackage>(installedPackages);
 
                             // remove a package as a root if another package is dependent on it
-                            foreach (NugetPackage package in installedPackages)
+                            foreach (var package in installedPackages)
                             {
-                                foreach (NugetPackageIdentifier dependency in package.Dependencies)
+                                foreach (var dependency in package.Dependencies)
                                 {
                                     roots.RemoveAll(p => p.Id == dependency.Id);
                                 }
@@ -227,7 +227,7 @@
                     {
                         EditorGUILayout.BeginHorizontal();
                         GUILayout.Space(75);
-                        float prevLabelWidth = EditorGUIUtility.labelWidth;
+                        var prevLabelWidth = EditorGUIUtility.labelWidth;
                         EditorGUIUtility.labelWidth = 50;
                         dependency.Id = EditorGUILayout.TextField(new GUIContent("ID", "The ID of the dependency package."), dependency.Id);
                         EditorGUILayout.EndHorizontal();
@@ -279,14 +279,14 @@
 
                 EditorGUILayout.Separator();
 
-                if (GUILayout.Button(string.Format("Save {0}", Path.GetFileName(filepath))))
+                if (GUILayout.Button($"Save {Path.GetFileName(filepath)}"))
                 {
                     nuspec.Save(filepath);
                 }
 
                 EditorGUILayout.Separator();
 
-                if (GUILayout.Button(string.Format("Pack {0}.nupkg", Path.GetFileNameWithoutExtension(filepath))))
+                if (GUILayout.Button($"Pack {Path.GetFileNameWithoutExtension(filepath)}.nupkg"))
                 {
                     NugetHelper.Pack(filepath);
                 }

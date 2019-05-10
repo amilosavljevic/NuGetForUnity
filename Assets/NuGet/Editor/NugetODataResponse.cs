@@ -45,12 +45,12 @@ namespace NugetForUnity
         /// <returns>The list of <see cref="NugetPackage"/>s read from the given XML.</returns>
         public static List<NugetPackage> Parse(XDocument document)
         {
-            List<NugetPackage> packages = new List<NugetPackage>();
+            var packages = new List<NugetPackage>();
 
             var packageEntries = document.Root.Elements(XName.Get("entry", AtomNamespace));
             foreach (var entry in packageEntries)
             {
-                NugetPackage package = new NugetPackage();
+                var package = new NugetPackage();
                 package.Id = entry.GetAtomElement("title").Value;
                 package.DownloadUrl = entry.GetAtomElement("content").Attribute("src").Value;
 
@@ -62,7 +62,7 @@ namespace NugetForUnity
                 package.LicenseUrl = entryProperties.GetProperty("LicenseUrl");
                 package.ProjectUrl = entryProperties.GetProperty("ProjectUrl");
 
-                string iconUrl = entryProperties.GetProperty("IconUrl");
+                var iconUrl = entryProperties.GetProperty("IconUrl");
                 if (!string.IsNullOrEmpty(iconUrl))
                 {
                     package.Icon = NugetHelper.DownloadImage(iconUrl);
@@ -76,15 +76,15 @@ namespace NugetForUnity
 
                 // Get dependencies
                 package.Dependencies = new List<NugetPackageIdentifier>();
-                string rawDependencies = entryProperties.GetProperty("Dependencies");
+                var rawDependencies = entryProperties.GetProperty("Dependencies");
                 if (!string.IsNullOrEmpty(rawDependencies))
                 {
                     var dependencyGroups = new Dictionary<string, NugetFrameworkGroup>();
 
-                    string[] dependencies = rawDependencies.Split('|');
+                    var dependencies = rawDependencies.Split('|');
                     foreach (var dependencyString in dependencies)
                     {
-                        string[] details = dependencyString.Split(':');
+                        var details = dependencyString.Split(':');
                         var dependency = new NugetPackageIdentifier(details[0], details[1]);
 
                         // some packages (ex: FSharp.Data - 2.1.0) have inproper "semi-empty" dependencies such as:
@@ -95,7 +95,7 @@ namespace NugetForUnity
                             continue;
                         }
 
-                        string framework = string.Empty;
+                        var framework = string.Empty;
                         if (details.Length > 2)
                         {
                             framework = details[2];
@@ -116,15 +116,15 @@ namespace NugetForUnity
                     }
 
                     // find the correct group for this project
-                    int intDotNetVersion = (int)NugetHelper.DotNetVersion;
+                    var intDotNetVersion = (int)NugetHelper.DotNetVersion;
                     //bool using46 = DotNetVersion == ApiCompatibilityLevel.NET_4_6; // NET_4_6 option was added in Unity 5.6
-                    bool using46 = intDotNetVersion == 3; // NET_4_6 = 3 in Unity 5.6 and Unity 2017.1 - use the hard-coded int value to ensure it works in earlier versions of Unity
+                    var using46 = intDotNetVersion == 3; // NET_4_6 = 3 in Unity 5.6 and Unity 2017.1 - use the hard-coded int value to ensure it works in earlier versions of Unity
                     NugetFrameworkGroup selectedGroup = null;
 
                     foreach (var kvPair in dependencyGroups.OrderByDescending(x => x.Key))
                     {
-                        string framework = kvPair.Key;
-                        NugetFrameworkGroup group = kvPair.Value;
+                        var framework = kvPair.Key;
+                        var group = kvPair.Value;
 
                         // Select the highest .NET library available that is supported
                         // See here: https://docs.nuget.org/ndocs/schema/target-frameworks
