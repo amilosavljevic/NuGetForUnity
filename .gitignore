@@ -74,6 +74,6 @@ Packages.meta
 CreateDLL/bin
 bin
 *.suo
-/Packager/Assets/NuGet/NugetForUnity.dll
+/Packager/Assets/NuGet/Editor/NugetForUnity.dll
 /Packager/NuGetForUnity.unitypackage.log
 /CreateDLL/.vs
