@@ -8,7 +8,7 @@ NuGetForUnity provides a visual editor window to see available packages on the s
 ![](screenshots/online.png?raw=true)
 
 # How do I install NuGetForUnity?
-Install the provided Unity package into your Unity project.  Located [here](https://github.com/GlitchEnzo/NuGetForUnity/releases).
+Install the provided Unity package into your Unity project.  Located [here](https://github.com/Nordeus/NuGetForUnity/tree/master/Packager).
 
 # How do I use NuGetForUnity?
 To launch, select **NuGet → Manage NuGet Packages**
@@ -113,3 +113,22 @@ Alternatively, you can use a "local feed" which is just a folder on your hard-dr
 Be sure to set the proper URL/path in the *NuGet.config* file and you should be good to go!
 
 Read more information here: [http://docs.nuget.org/create/hosting-your-own-nuget-feeds](http://docs.nuget.org/create/hosting-your-own-nuget-feeds)
+
+# How is this fork different from the original
+* It is setup to use Unity 2018.3.11f1 for creating unitypackage.
+* The CreateDLL solution is updated to .NETFramework 4.6.1
+* DotNetZip.dll is deleted and replaced with `System.IO.Compression`
+* Loading packages' icons is done asynchronously so that package window opens a bit faster.
+* When uninstalling the package it will also delete all its dependencies that are not manually installed and that no other package depends on.
+
+#How to build
+There is a provided build.ps1 powershell script you should run to rebuild the unitypackage. For it to work you need to make sure you have `UnitySetup` and `VSSetup` powershell modules installed. You can check what modules you have by running `Get-Module -ListAvailable`. Custom modules are listed at the top. If you don't have this modules installed you need to run these commands to install them:
+```
+Install-Module VSSetup -Scope CurrentUser -RequiredVersion 2.0.1.32208
+Install-Module UnitySetup -Scope CurrentUser
+```
+Note that you need the exact version of VSSetup module so if you have some other version installed you should probably uninstall it first using `Uninstall-Module VSSetup`.
+
+In case UnitySetup can't find your installation of Unity 2018.3.11f1 you may need to modify the installed module. The `Get-Module -ListAvailable` command will also write in which folder is it installed. There you should edit `function Get-UnitySetupInstance` in UnitySetup.psm1 and change the values of `$BasePath` array.
+
+In case you only have a newer version of Unity and want to upgrade this project to use it you just need to manually open the root folder and also the Packager folder in newer Unity so it updates the ProjectVersion file.
