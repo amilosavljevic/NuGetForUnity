@@ -1,14 +1,16 @@
-﻿namespace NugetForUnity
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Networking;
+
+namespace NugetForUnity
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Diagnostics;
-	using System.Linq;
-	using System.Text;
-	using System.Text.RegularExpressions;
-	using UnityEditor;
-	using UnityEngine;
-	using UnityEngine.Networking;
 
 	/// <summary>
 	/// Represents the NuGet Package Manager Window in the Unity Editor.
@@ -222,7 +224,7 @@
 		[MenuItem("NuGet/Check for Updates...", false, 10)]
 		protected static void CheckForUpdates()
 		{
-			const string url = "https://github.com/GlitchEnzo/NuGetForUnity/releases";
+			const string url = "https://github.com/Nordeus/NuGetForUnity/releases";
 			using (var request = UnityWebRequest.Get(url))
 			{
 				request.SendWebRequest();
@@ -276,10 +278,40 @@
 						"Open Releases Page",
 						"Cancel"))
 				{
-					case 0: Application.OpenURL(latestVersionDownloadUrl); break;
+					case 0: DownloadAndRunUpdate(latestVersionDownloadUrl); break;
 					case 1: Application.OpenURL(url); break;
 					case 2: break;
 				}
+			}
+		}
+
+		private static void DownloadAndRunUpdate(string latestVersionDownloadUrl)
+		{
+			using (var request = UnityWebRequest.Get(latestVersionDownloadUrl))
+			{
+				request.SendWebRequest();
+
+				NugetHelper.LogVerbose("HTTP GET {0}", latestVersionDownloadUrl);
+				while (!request.isDone)
+				{
+					EditorUtility.DisplayProgressBar("Checking updates", null, 0.0f);
+				}
+
+				EditorUtility.ClearProgressBar();
+
+				if (request.isNetworkError || request.isHttpError)
+				{
+					EditorUtility.DisplayDialog(
+												 "Failed update",
+												 $"Couldn't download the update from {latestVersionDownloadUrl}.",
+												 "OK");
+					return;
+				}
+
+				var downloadFilePath = Path.Combine(Path.GetTempPath(), "NugetForUnity.unitypackage");
+				File.WriteAllBytes(downloadFilePath, request.downloadHandler.data);
+
+				AssetDatabase.ImportPackage(downloadFilePath, true);
 			}
 		}
 

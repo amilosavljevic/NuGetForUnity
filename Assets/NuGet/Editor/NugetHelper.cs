@@ -712,19 +712,19 @@
 			var foundPackage = package as NugetPackage ?? GetSpecificPackage(package);
 
 			// update the package.config file
-			PackagesConfigFile.RemovePackage(package);
+			PackagesConfigFile.RemovePackage(foundPackage);
 			PackagesConfigFile.Save(PackagesConfigFilePath);
 
-			var packageInstallDirectory = Path.Combine(NugetConfigFile.RepositoryPath, $"{package.Id}.{package.Version}");
+			var packageInstallDirectory = Path.Combine(NugetConfigFile.RepositoryPath, $"{foundPackage.Id}.{foundPackage.Version}");
 			DeleteDirectory(packageInstallDirectory);
 
-			var metaFile = Path.Combine(NugetConfigFile.RepositoryPath, $"{package.Id}.{package.Version}.meta");
+			var metaFile = Path.Combine(NugetConfigFile.RepositoryPath, $"{foundPackage.Id}.{foundPackage.Version}.meta");
 			DeleteFile(metaFile);
 
-			var toolsInstallDirectory = Path.Combine(Application.dataPath, $"../Packages/{package.Id}.{package.Version}");
+			var toolsInstallDirectory = Path.Combine(Application.dataPath, $"../Packages/{foundPackage.Id}.{foundPackage.Version}");
 			DeleteDirectory(toolsInstallDirectory);
 
-			installedPackages.Remove(package.Id);
+			installedPackages.Remove(foundPackage.Id);
 
 			if (deleteDependencies)
 			{
