@@ -38,7 +38,7 @@ Click the **View License** to open the license in a web browser.
 Click the **Install** to install the package.
 Note: If the package is already installed an **Uninstall** button will be displayed which lets you uninstall the package.
 
-The **Installed** tabs shows the packages already installed in the current Unity project.
+The **Installed** tabs shows the packages already installed in the current Unity project. By default it only displayed the packages that were manually installed and not the packages that were brough it as dependencies. If you want to see all the packages check the **Show Dependencies** checkbox.
 
 ![](screenshots/installed.png?raw=true)
 
@@ -90,6 +90,24 @@ If you are interested in the process NuGetForUnity follows or you are trying to 
 
 The *.nupkg* files downloaded from the NuGet server are cached locally in the current user's Application Data folder.  (`C:\Users\[username]\AppData\Local\NuGet\Cache`).  Packages previously installed are installed via the cache folder instead of downloading it from the server again.
 
+# Package default initialization
+If package has an `Init.template` file in its root it will be used to inject default package initialization code into the project. The file should look like this:
+```
+InitDependencies: a, b, c <in case the init code depends on packages the package itself doesn't depend on>
+Uses: use1, use2 <using clauses that need to exist at the top of the file>
+CustomExceptionLogging: <code to insert into CustomExceptionLogging if package wants to handle init exceptions>
+{
+	...
+}
+InitCode:|SceneInitCode: <this is the only required section>
+{
+	...
+}
+```
+Nuget for Unity will look for `AppInitializer.cs` and `AppInitializer.Generated.cs` under `Assets/Scripts/Initialization/`. If they don't exist they will be created with the default content. The Generated file contains Unity initialization logic and calls to specific packages initialization code. The calls are automatically injected here and users should not modify this file. The actual initialization methods are injected in `AppInitializer.cs` and that is where users can modify how initialization is done and supply the required parameters.
+
+There are two ways to specify init code in `Init.template` file: `InitCode` and `SceneInitCode`. Most of the packages should use `InitCode`. `SceneInitCode` should be used only if your package needs to create Unity GameObjects on the scene in its initialization. Note that in that case it will also be initialized a bit later than packages that use `InitCode`.
+
 # How do I create my own NuGet packages from within Unity?
 First, you'll need to create a *.nuspec* file that defines your package.  In your Project window, right click where you want the *.nuspec* file to go and select **NuGet → Create Nuspec File**.
 
@@ -120,6 +138,8 @@ Read more information here: [http://docs.nuget.org/create/hosting-your-own-nuget
 * DotNetZip.dll is deleted and replaced with `System.IO.Compression`
 * Loading packages' icons is done asynchronously so that package window opens a bit faster.
 * When uninstalling the package it will also delete all its dependencies that are not manually installed and that no other package depends on.
+* It only shows the manually installed packages by default in installed tab but there is an option to show them all.
+* It supports packages with Init.template which they can use to specify default initialization code that should be injected in the project on installation.
 
 #How to build
 There is a provided build.ps1 powershell script you should run to rebuild the unitypackage. For it to work you need to make sure you have `UnitySetup` and `VSSetup` powershell modules installed. You can check what modules you have by running `Get-Module -ListAvailable`. Custom modules are listed at the top. If you don't have this modules installed you need to run these commands to install them:

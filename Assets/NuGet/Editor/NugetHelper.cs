@@ -1195,6 +1195,8 @@
 				if (refreshAssets)
 					EditorUtility.DisplayProgressBar($"Installing {package.Id} {package.Version}", "Extracting Package", 0.6f);
 
+				string initTemplatePath = null;
+
 				if (File.Exists(cachedPackagePath))
 				{
 					var baseDirectory = Path.Combine(NugetConfigFile.RepositoryPath, $"{package.Id}.{package.Version}");
@@ -1210,6 +1212,7 @@
 							var dirName = Path.GetDirectoryName(destPath);
 							if (dirName != null && !Directory.Exists(dirName)) Directory.CreateDirectory(dirName);
 							entry.ExtractToFile(destPath, true);
+							if (entry.FullName == "Init.template") initTemplatePath = destPath;
 							if (NugetConfigFile.ReadOnlyPackageFiles)
 							{
 								var extractedFile = new FileInfo(destPath);
@@ -1228,6 +1231,19 @@
 
 				if (refreshAssets)
 					EditorUtility.DisplayProgressBar($"Installing {package.Id} {package.Version}", "Cleaning Package", 0.9f);
+
+				try
+				{
+					if (initTemplatePath != null)
+					{
+						ProcessInitTemplate(initTemplatePath, package);
+						DeleteFile(initTemplatePath);
+					}
+				}
+				catch (Exception e)
+				{
+					Debug.LogError("Failed processing init template " + e);
+				}
 
 				// clean
 				Clean(package);
@@ -1252,6 +1268,164 @@
 			}
 
 			return installSuccess;
+		}
+
+		private static void ProcessInitTemplate(string initTemplatePath, NugetPackage package)
+		{
+			string LoadInitClassFile(string path, string name)
+			{
+				if (File.Exists(path)) return File.ReadAllText(path);
+
+				var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
+				if (stream == null)
+				{
+					Debug.LogError("Failed to load embedded CreateDLL..Templates." + name);
+					return null;
+				}
+
+				using (var streamReader = new StreamReader(stream, Encoding.UTF8))
+				{
+					return streamReader.ReadToEnd();
+				}
+			}
+
+			var initCsDir = Path.Combine(Application.dataPath, "Scripts/Initialization");
+			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
+			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
+
+			var initCs = LoadInitClassFile(initCsPath, "AppInitializer.cs");
+			var generatedInitCs = LoadInitClassFile(generatedInitCsPath, "AppInitializer.Generated.cs");
+
+			if (initCs == null || generatedInitCs == null) return;
+
+			// We guarantee Windows line breaks
+			var newLinesRegex = new Regex(@"\r\n?|\n");
+
+			initCs = newLinesRegex.Replace(initCs, "\r\n");
+			generatedInitCsPath = newLinesRegex.Replace(generatedInitCsPath, "\r\n");
+			
+			var initTemplate = File.ReadAllLines(initTemplatePath);
+
+			// Init template file should be written like this:
+			// InitDependencies: a, b, c <in case the init code depends on packages the package itself doesn't depend on>
+			// Uses: use1, use2 <using clauses that need to exist at the top of the file>
+			// CustomExceptionLogging: <code to insert into CustomExceptionLogging if package wants to handle init exceptions>
+			// {...}
+			// InitCode:|SceneInitCode: <this is the only required section>
+			// {...}
+
+			const string INIT_DEPENDENCIES_KEY = "InitDependencies:";
+			const string USES_KEY = "Uses:";
+			const string CUSTOM_EXCEPTION_LOGGING_KEY = "CustomExceptionLogging:";
+			const string INIT_CODE_KEY = "InitCode:";
+			const string INIT_SCENE_CODE_KEY = "InitSceneCode:";
+
+			var dependencies = package.Dependencies.Select(identifier => identifier.Id.Replace("nordeus.", "").Replace("unity.", "")).ToList();
+			var uses = new List<string>();
+			var customExceptionLoggingCode = "";
+			var initCode = "";
+
+			var line = 0;
+			var initSceneCodeFound = false;
+			for (; line < initTemplate.Length; line++)
+			{
+				if (initTemplate[line].StartsWith(INIT_DEPENDENCIES_KEY))
+				{
+					var additionalDeps = initTemplate[line].Substring(INIT_DEPENDENCIES_KEY.Length).Split(new []{','}, StringSplitOptions.RemoveEmptyEntries);
+					foreach (var additionalDep in additionalDeps)
+					{
+						dependencies.Add(additionalDep.Trim());
+					}
+					continue;
+				}
+
+				if (initTemplate[line].StartsWith(USES_KEY))
+				{
+					var useModules = initTemplate[line].Substring(USES_KEY.Length).Split(new []{','}, StringSplitOptions.RemoveEmptyEntries);
+					foreach (var useModule in useModules)
+					{
+						uses.Add(useModule.Trim());
+					}
+					continue;
+				}
+
+				if (initTemplate[line].StartsWith(CUSTOM_EXCEPTION_LOGGING_KEY))
+				{
+					line++;
+					while (line + 1 < initTemplate.Length && !initTemplate[line + 1].StartsWith("}"))
+					{
+						line++;
+						customExceptionLoggingCode += "\t\t" + initTemplate[line] + "\r\n";
+					}
+					continue;
+				}
+
+				var initCodeFound = initTemplate[line].StartsWith(INIT_CODE_KEY);
+				initSceneCodeFound = initTemplate[line].StartsWith(INIT_SCENE_CODE_KEY);
+				if (initCodeFound || initSceneCodeFound)
+				{
+					line++;
+					while (line < initTemplate.Length)
+					{
+						initCode += "\t\t" + initTemplate[line] + "\r\n";
+						line++;
+					}
+				}
+			}
+
+			foreach (var use in uses)
+			{
+				var usingLine = "using " + use + ";";
+				if (initCs.Contains(usingLine)) continue;
+				initCs = usingLine + "\r\n" + initCs;
+			}
+			
+			var packageId = package.Id.Replace("nordeus.", "").Replace("unity.", "");
+			packageId = packageId.Substring(0, 1).ToUpper() + packageId.Substring(1);
+
+			var initMethodName = "Init" + packageId;
+
+			var insertPos = 0;
+			
+			if (initSceneCodeFound)
+			{
+				insertPos = generatedInitCs.LastIndexOf("\t\t}", StringComparison.Ordinal);
+			}
+			else
+			{
+				foreach (var dependency in dependencies)
+				{
+					var depMethod = "Init" + dependency.Substring(0, 1).ToUpper() + dependency.Substring(1);
+					var depIndex = generatedInitCs.IndexOf(depMethod, StringComparison.Ordinal);
+					if (depIndex < 0) continue;
+					var newInsertPos = generatedInitCs.IndexOf("\r\n", depIndex, StringComparison.Ordinal) + 2;
+					if (newInsertPos > insertPos) insertPos = newInsertPos;
+				}
+
+				if (insertPos == 0)
+				{
+					const string NonSceneInit = "private static void DoNonSceneInits()\r\n\t\t{\r\n";
+					insertPos = generatedInitCs.IndexOf(NonSceneInit, StringComparison.Ordinal) + NonSceneInit.Length;
+				}
+			}
+
+			generatedInitCs = generatedInitCs.Substring(0, insertPos) + "\t\t\t" + initMethodName + "();\r\n" + generatedInitCs.Substring(insertPos);
+
+			if (customExceptionLoggingCode.Length > 0)
+			{
+				insertPos = initCs.IndexOf("\t\t}", StringComparison.Ordinal);
+				initCs = initCs.Substring(0, insertPos) + customExceptionLoggingCode + initCs.Substring(insertPos);
+			}
+
+			initCode = "\r\n\t\tpublic static void " + initMethodName + "()\r\n" + initCode;
+			insertPos = initCs.LastIndexOf("\t}", StringComparison.Ordinal);
+			initCs = initCs.Substring(0, insertPos) + initCode + initCs.Substring(insertPos);
+			
+			// Make sure the dir exists
+			Directory.CreateDirectory(initCsDir);
+
+			File.WriteAllText(initCsPath, initCs);
+			File.WriteAllText(generatedInitCsPath, generatedInitCs);
 		}
 
 		private struct AuthenticatedFeed
