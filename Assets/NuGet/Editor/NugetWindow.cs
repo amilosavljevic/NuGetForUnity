@@ -21,7 +21,7 @@ namespace NugetForUnity
 		/// True when the NugetWindow has initialized. This is used to skip time-consuming reloading operations when the assembly is reloaded.
 		/// </summary>
 		[SerializeField]
-		private bool hasRefreshed = false;
+		private bool hasRefreshed;
 
 		/// <summary>
 		/// The current position of the scroll bar in the GUI.
@@ -56,6 +56,11 @@ namespace NugetForUnity
 		private bool showOnlinePrerelease;
 
 		/// <summary>
+		/// By default we are only showing the packages you manually installed but this options allows to show all
+		/// </summary>
+		private bool showAllInstalledPackages;
+
+		/// <summary>
 		/// True to show all old package versions.  False to only show the latest version.
 		/// </summary>
 		private bool showAllUpdateVersions;
@@ -80,6 +85,10 @@ namespace NugetForUnity
 		/// </summary>
 		private string onlineSearchTerm = "Search";
 
+		private List<NugetPackage> filteredInstalledPackages;
+		
+		private string lastInstalledSearchTerm = "Search";
+		
 		/// <summary>
 		/// The search term to search the installed packages for.
 		/// </summary>
@@ -129,14 +138,25 @@ namespace NugetForUnity
 		/// </summary>
 		private readonly HashSet<NugetPackage> openCloneWindows = new HashSet<NugetPackage>();
 
+
 		private IEnumerable<NugetPackage> FilteredInstalledPackages
 		{
 			get
 			{
-				if (installedSearchTerm == "Search")
-					return NugetHelper.InstalledPackages;
+				if (filteredInstalledPackages == null || installedSearchTerm != lastInstalledSearchTerm)
+				{
+					filteredInstalledPackages = NugetHelper.InstalledPackages.Where(x => x.IsManuallyInstalled || showAllInstalledPackages).ToList();
+				}
+				if (installedSearchTerm == lastInstalledSearchTerm || installedSearchTerm == "Search")
+					return filteredInstalledPackages;
 
-				return NugetHelper.InstalledPackages.Where(x => x.Id.ToLower().Contains(installedSearchTerm) || x.Title.ToLower().Contains(installedSearchTerm)).ToList();
+				bool Filter(NugetPackage x) => (x.IsManuallyInstalled || showAllInstalledPackages)
+												&& (x.Id.ToLower().Contains(installedSearchTerm)
+													|| x.Title.ToLower().Contains(installedSearchTerm));
+
+				filteredInstalledPackages = NugetHelper.InstalledPackages.Where(Filter).ToList();
+				lastInstalledSearchTerm = installedSearchTerm;
+				return filteredInstalledPackages;
 			}
 		}
 
@@ -691,6 +711,17 @@ namespace NugetForUnity
 
 				EditorGUILayout.BeginHorizontal();
 				{
+					var newVal = EditorGUILayout.Toggle("Show Dependecies", showAllInstalledPackages);
+					if (newVal != showAllInstalledPackages)
+					{
+						showAllInstalledPackages = newVal;
+						lastInstalledSearchTerm = null;
+					}
+				}
+				EditorGUILayout.EndHorizontal();
+
+				EditorGUILayout.BeginHorizontal();
+				{
 					var oldFontSize = GUI.skin.textField.fontSize;
 					GUI.skin.textField.fontSize = 25;
 					installedSearchTermEditBox = EditorGUILayout.TextField(installedSearchTermEditBox, GUILayout.Height(30));
@@ -708,7 +739,7 @@ namespace NugetForUnity
 				// search only if the enter key is pressed
 				if (enterPressed)
 				{
-					installedSearchTerm = installedSearchTermEditBox;
+					installedSearchTerm = installedSearchTermEditBox.ToLower();
 				}
 			}
 			EditorGUILayout.EndVertical();
@@ -843,6 +874,7 @@ namespace NugetForUnity
 						NugetHelper.Uninstall(package, true, true);
 						NugetHelper.UpdateInstalledPackages();
 						UpdateUpdatePackages();
+						lastInstalledSearchTerm = null;
 					}
 				}
 				else
@@ -857,6 +889,7 @@ namespace NugetForUnity
 								NugetHelper.Update(installed, package);
 								NugetHelper.UpdateInstalledPackages();
 								UpdateUpdatePackages();
+								lastInstalledSearchTerm = null;
 							}
 						}
 						else if (installed > package)
@@ -867,6 +900,7 @@ namespace NugetForUnity
 								NugetHelper.Update(installed, package);
 								NugetHelper.UpdateInstalledPackages();
 								UpdateUpdatePackages();
+								lastInstalledSearchTerm = null;
 							}
 						}
 					}
@@ -879,6 +913,7 @@ namespace NugetForUnity
 							AssetDatabase.Refresh();
 							NugetHelper.UpdateInstalledPackages();
 							UpdateUpdatePackages();
+							lastInstalledSearchTerm = null;
 						}
 					}
 				}

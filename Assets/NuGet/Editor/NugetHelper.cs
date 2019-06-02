@@ -829,6 +829,8 @@
 					var package = NugetPackage.FromNupkgFile(nupkgFile);
 					if (!installedPackages.ContainsKey(package.Id))
 					{
+						var actualData = PackagesConfigFile.Packages.Find(pkg => pkg.Id == package.Id);
+						if (actualData != null) package.IsManuallyInstalled = actualData.IsManuallyInstalled;
 						installedPackages.Add(package.Id, package);
 					}
 					else
@@ -844,6 +846,8 @@
 					var package = NugetPackage.FromNuspec(NuspecFile.Load(nuspecFile));
 					if (!installedPackages.ContainsKey(package.Id))
 					{
+						var actualData = PackagesConfigFile.Packages.Find(pkg => pkg.Id == package.Id);
+						if (actualData != null) package.IsManuallyInstalled = actualData.IsManuallyInstalled;
 						installedPackages.Add(package.Id, package);
 					}
 					else
@@ -1097,7 +1101,6 @@
 		/// </summary>
 		/// <param name="package">The package to install.</param>
 		/// <param name="refreshAssets">True to refresh the Unity asset database.  False to ignore the changes (temporarily).</param>
-		/// <param name="isDependency">True if this package needs to be installed as a dependency of another package.</param>
 		public static bool Install(NugetPackage package, bool refreshAssets = true)
 		{
 			if (installedPackages.TryGetValue(package.Id, out var installedPackage))
