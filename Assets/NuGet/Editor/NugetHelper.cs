@@ -1293,10 +1293,18 @@
 			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
 			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
 
+
 			var initCs = LoadInitClassFile(initCsPath, "AppInitializer.cs");
 			var generatedInitCs = LoadInitClassFile(generatedInitCsPath, "AppInitializer.Generated.cs");
 
 			if (initCs == null || generatedInitCs == null) return;
+			
+			var packageId = package.Id.Replace("nordeus.", "").Replace("unity.", "");
+			packageId = packageId.Substring(0, 1).ToUpper() + packageId.Substring(1);
+			
+			var initMethodName = "Init" + packageId;
+			// If init code for this package already exists skip injection
+			if (generatedInitCs.Contains("\t" + initMethodName + "()")) return;
 
 			// We guarantee Windows line breaks
 			var newLinesRegex = new Regex(@"\r\n?|\n");
@@ -1379,11 +1387,6 @@
 				if (initCs.Contains(usingLine)) continue;
 				initCs = usingLine + "\r\n" + initCs;
 			}
-			
-			var packageId = package.Id.Replace("nordeus.", "").Replace("unity.", "");
-			packageId = packageId.Substring(0, 1).ToUpper() + packageId.Substring(1);
-
-			var initMethodName = "Init" + packageId;
 
 			var insertPos = 0;
 			
