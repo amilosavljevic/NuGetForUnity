@@ -23,7 +23,6 @@
 	///      1) Open a command prompt as admin (Press Windows key. Type "cmd".  Right click on the icon and choose "Run as Administrator"
 	///      2) Enter this command: cmd /c assoc .nupkg=CompressedFolder
 	/// </summary>
-	[InitializeOnLoad]
 	public static class NugetHelper
 	{
 		/// <summary>
@@ -109,8 +108,10 @@
 				Directory.CreateDirectory(PackOutputDirectory);
 			}
 
-			// restore packages - this will be called EVERY time the project is loaded or a code-file changes
-			Restore();
+			// restore packages - this will be called EVERY time the project is loaded or a code-file changes.
+			// But we in Nordeus want to commit our packages so builds are faster and we don't want to run auto Restore.
+			// Note that this class also had [InitializeOnLoad] attribute so it runs right after each compilation
+			// Restore(); 
 		}
 
 		/// <summary>
