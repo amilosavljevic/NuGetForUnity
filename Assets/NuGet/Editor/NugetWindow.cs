@@ -17,6 +17,8 @@ namespace NugetForUnity
 	/// </summary>
 	public class NugetWindow : EditorWindow
 	{
+		private const string url = "https://github.com/Nordeus/NuGetForUnity/releases";
+
 		/// <summary>
 		/// True when the NugetWindow has initialized. This is used to skip time-consuming reloading operations when the assembly is reloaded.
 		/// </summary>
@@ -184,58 +186,7 @@ namespace NugetForUnity
 		[MenuItem("NuGet/Version " + NugetPreferences.NuGetForUnityVersion, false, 10)]
 		protected static void DisplayVersion()
 		{
-			var assembly = System.Reflection.Assembly.GetAssembly(typeof(EditorWindow));
-			var preferencesWindow = assembly.GetType("UnityEditor.PreferencesWindow");
-			var preferencesWindowSection = assembly.GetType("UnityEditor.PreferencesWindow+Section"); // access nested class via + instead of .         
-
-			// open the preferences window
-			var preferencesEditorWindow = GetWindowWithRect(preferencesWindow, new Rect(100f, 100f, 500f, 400f), true, "Unity Preferences");
-			//preferencesEditorWindow.m_Parent.window.m_DontSaveToLayout = true; //<-- Unity's implementation also does this
-
-			// Get the flag to see if custom sections have already been added
-			var m_RefreshCustomPreferences = preferencesWindow.GetField("m_RefreshCustomPreferences", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-			var refesh = (bool)m_RefreshCustomPreferences.GetValue(preferencesEditorWindow);
-
-			if (refesh)
-			{
-				// Invoke the AddCustomSections to load all user-specified preferences sections.  This normally isn't done until OnGUI, but we need to call it now to set the proper index
-				var addCustomSections = preferencesWindow.GetMethod("AddCustomSections", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-				addCustomSections.Invoke(preferencesEditorWindow, null);
-
-				// Unity is dumb and doesn't set the flag for having loaded the custom sections INSIDE the AddCustomSections method!  So we must call it manually.
-				m_RefreshCustomPreferences.SetValue(preferencesEditorWindow, false);
-			}
-
-			// get the List<PreferencesWindow.Section> m_Sections.Count
-			var m_Sections = preferencesWindow.GetField("m_Sections", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-			var list = m_Sections.GetValue(preferencesEditorWindow);
-			var sectionList = typeof(List<>).MakeGenericType(preferencesWindowSection);
-			var getCount = sectionList.GetProperty("Count").GetGetMethod(true);
-			var count = (int)getCount.Invoke(list, null);
-			//Debug.LogFormat("Count = {0}", count);
-
-			// Figure out the index of the NuGet for Unity preferences
-			var getItem = sectionList.GetMethod("get_Item");
-			var nugetIndex = 0;
-			for (var i = 0; i < count; i++)
-			{
-				var section = getItem.Invoke(list, new object[] { i });
-				var content = (GUIContent)section.GetType().GetField("content", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance).GetValue(section);
-				if (content != null && content.text == "NuGet For Unity")
-				{
-					nugetIndex = i;
-					break;
-				}
-			}
-			//Debug.LogFormat("NuGet index = {0}", nugetIndex);
-
-			// set the selected section index
-			var selectedSectionIndex = preferencesWindow.GetProperty("selectedSectionIndex", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-			var selectedSectionIndexSetter = selectedSectionIndex.GetSetMethod(true);
-			selectedSectionIndexSetter.Invoke(preferencesEditorWindow, new object[] { nugetIndex });
-			//var selectedSectionIndexGetter = selectedSectionIndex.GetGetMethod(true);
-			//object index = selectedSectionIndexGetter.Invoke(preferencesEditorWindow, null);
-			//Debug.LogFormat("Selected Index = {0}", index);
+			Application.OpenURL(url);
 		}
 
 		/// <summary>
@@ -244,7 +195,6 @@ namespace NugetForUnity
 		[MenuItem("NuGet/Check for Updates...", false, 10)]
 		protected static void CheckForUpdates()
 		{
-			const string url = "https://github.com/Nordeus/NuGetForUnity/releases";
 			using (var request = UnityWebRequest.Get(url))
 			{
 				request.SendWebRequest();
