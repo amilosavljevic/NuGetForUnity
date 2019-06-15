@@ -48,7 +48,15 @@
 		/// <summary>
 		/// The loaded NuGet.config file that holds the settings for NuGet.
 		/// </summary>
-		public static NugetConfigFile NugetConfigFile { get; private set; }
+		public static NugetConfigFile NugetConfigFile
+		{
+			get
+			{
+				if (nugetConfigFile != null) return nugetConfigFile;
+				nugetConfigFile = LoadNugetConfigFile();
+				return nugetConfigFile;
+			}
+		}
 
 		/// <summary>
 		/// Backing field for the packages.config file.
@@ -86,6 +94,8 @@
 		/// </summary>
 		internal static ApiCompatibilityLevel DotNetVersion;
 
+		private static NugetConfigFile nugetConfigFile;
+
 		/// <summary>
 		/// Static constructor used by Unity to initialize NuGet and restore packages defined in packages.config.
 		/// </summary>
@@ -100,7 +110,7 @@
 			DotNetVersion = PlayerSettings.GetApiCompatibilityLevel(EditorUserBuildSettings.selectedBuildTargetGroup);
 
 			// Load the NuGet.config file
-			LoadNugetConfigFile();
+			nugetConfigFile = LoadNugetConfigFile();
 
 			// create the nupkgs directory, if it doesn't exist
 			if (!Directory.Exists(PackOutputDirectory))
@@ -115,19 +125,28 @@
 		}
 
 		/// <summary>
+		/// Reloads the file
+		/// </summary>
+		public static void ForceReloadNugetConfig()
+		{
+			nugetConfigFile = LoadNugetConfigFile();
+		}
+
+		/// <summary>
 		/// Loads the NuGet.config file.
 		/// </summary>
-		public static void LoadNugetConfigFile()
+		private static NugetConfigFile LoadNugetConfigFile()
 		{
+			NugetConfigFile result;
 			if (File.Exists(NugetConfigFilePath))
 			{
-				NugetConfigFile = NugetConfigFile.Load(NugetConfigFilePath);
+				result = NugetConfigFile.Load(NugetConfigFilePath);
 			}
 			else
 			{
 				Debug.LogFormat("No NuGet.config file found. Creating default at {0}", NugetConfigFilePath);
 
-				NugetConfigFile = NugetConfigFile.CreateDefaultFile(NugetConfigFilePath);
+				result = NugetConfigFile.CreateDefaultFile(NugetConfigFilePath);
 				AssetDatabase.Refresh();
 			}
 
@@ -155,7 +174,7 @@
 				if (arg == "-Source")
 				{
 					// if the source is being forced, don't install packages from the cache
-					NugetConfigFile.InstallFromCache = false;
+					result.InstallFromCache = false;
 					readingSources = true;
 					useCommandLineSources = true;
 				}
@@ -164,15 +183,17 @@
 			// if there are not command line overrides, use the NuGet.config package sources
 			if (!useCommandLineSources)
 			{
-				if (NugetConfigFile.ActivePackageSource.ExpandedPath == "(Aggregate source)")
+				if (result.ActivePackageSource.ExpandedPath == "(Aggregate source)")
 				{
-					packageSources.AddRange(NugetConfigFile.PackageSources);
+					packageSources.AddRange(result.PackageSources);
 				}
 				else
 				{
-					packageSources.Add(NugetConfigFile.ActivePackageSource);
+					packageSources.Add(result.ActivePackageSource);
 				}
 			}
+
+			return result;
 		}
 
 		/// <summary>
@@ -812,8 +833,6 @@
 		/// </summary>
 		public static void UpdateInstalledPackages()
 		{
-			LoadNugetConfigFile();
-
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 

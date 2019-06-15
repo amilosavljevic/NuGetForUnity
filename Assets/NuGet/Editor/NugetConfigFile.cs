@@ -52,7 +52,7 @@
         /// <summary>
         /// The incomplete path that is saved.  The path is expanded and made public via the property above.
         /// </summary>
-        private string savedRepositoryPath;
+        public string SavedRepositoryPath { get; set; }
 
         /// <summary>
         /// Saves this NuGet.config file to disk.
@@ -113,7 +113,7 @@
             // save the un-expanded respository path
             addElement = new XElement("add");
             addElement.Add(new XAttribute("key", "repositoryPath"));
-            addElement.Add(new XAttribute("value", savedRepositoryPath));
+            addElement.Add(new XAttribute("value", SavedRepositoryPath));
             config.Add(addElement);
 
             // save the default push source
@@ -266,7 +266,7 @@
 
                     if (string.Equals(key, "repositoryPath", StringComparison.OrdinalIgnoreCase))
                     {
-                        configFile.savedRepositoryPath = value;
+                        configFile.SavedRepositoryPath = value;
                         configFile.RepositoryPath = Environment.ExpandEnvironmentVariables(value);
 
                         if (!Path.IsPathRooted(configFile.RepositoryPath))

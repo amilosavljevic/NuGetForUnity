@@ -26,16 +26,15 @@
         {
             EditorGUILayout.LabelField($"Version: {NuGetForUnityVersion}");
 
-            if (NugetHelper.NugetConfigFile == null)
-            {
-                NugetHelper.LoadNugetConfigFile();
-            }
+			var conf = NugetHelper.NugetConfigFile;
 
-            NugetHelper.NugetConfigFile.InstallFromCache = EditorGUILayout.Toggle("Install From the Cache", NugetHelper.NugetConfigFile.InstallFromCache);
+            conf.InstallFromCache = EditorGUILayout.Toggle("Install From the Cache", conf.InstallFromCache);
 
-            NugetHelper.NugetConfigFile.ReadOnlyPackageFiles = EditorGUILayout.Toggle("Read-Only Package Files", NugetHelper.NugetConfigFile.ReadOnlyPackageFiles);
+            conf.ReadOnlyPackageFiles = EditorGUILayout.Toggle("Read-Only Package Files", conf.ReadOnlyPackageFiles);
 
-            NugetHelper.NugetConfigFile.Verbose = EditorGUILayout.Toggle("Use Verbose Logging", NugetHelper.NugetConfigFile.Verbose);
+            conf.Verbose = EditorGUILayout.Toggle("Use Verbose Logging", conf.Verbose);
+
+			conf.SavedRepositoryPath = EditorGUILayout.TextField("Packages Directory", conf.SavedRepositoryPath);
 
             EditorGUILayout.LabelField("Package Sources:");
 
@@ -45,7 +44,7 @@
             NugetPackageSource sourceToMoveDown = null;
             NugetPackageSource sourceToRemove = null;
 
-            foreach (var source in NugetHelper.NugetConfigFile.PackageSources)
+            foreach (var source in conf.PackageSources)
             {
                 EditorGUILayout.BeginVertical();
                 {
@@ -111,40 +110,39 @@
 
             if (sourceToMoveUp != null)
             {
-                var index = NugetHelper.NugetConfigFile.PackageSources.IndexOf(sourceToMoveUp);
+                var index = conf.PackageSources.IndexOf(sourceToMoveUp);
                 if (index > 0)
                 {
-                    NugetHelper.NugetConfigFile.PackageSources[index] = NugetHelper.NugetConfigFile.PackageSources[index - 1];
-                    NugetHelper.NugetConfigFile.PackageSources[index - 1] = sourceToMoveUp;
+                    conf.PackageSources[index] = conf.PackageSources[index - 1];
+                    conf.PackageSources[index - 1] = sourceToMoveUp;
                 }
             }
 
             if (sourceToMoveDown != null)
             {
-                var index = NugetHelper.NugetConfigFile.PackageSources.IndexOf(sourceToMoveDown);
-                if (index < NugetHelper.NugetConfigFile.PackageSources.Count - 1)
+                var index = conf.PackageSources.IndexOf(sourceToMoveDown);
+                if (index < conf.PackageSources.Count - 1)
                 {
-                    NugetHelper.NugetConfigFile.PackageSources[index] = NugetHelper.NugetConfigFile.PackageSources[index + 1];
-                    NugetHelper.NugetConfigFile.PackageSources[index + 1] = sourceToMoveDown;
+                    conf.PackageSources[index] = conf.PackageSources[index + 1];
+                    conf.PackageSources[index + 1] = sourceToMoveDown;
                 }
             }
 
             if (sourceToRemove != null)
             {
-                NugetHelper.NugetConfigFile.PackageSources.Remove(sourceToRemove);
+                conf.PackageSources.Remove(sourceToRemove);
             }
 
             if (GUILayout.Button("Add New Source"))
             {
-                NugetHelper.NugetConfigFile.PackageSources.Add(new NugetPackageSource("New Source", "source_path"));
+                conf.PackageSources.Add(new NugetPackageSource("New Source", "source_path"));
             }
 
             EditorGUILayout.EndScrollView();
 
             if (GUILayout.Button("Save"))
             {
-                NugetHelper.NugetConfigFile.Save(NugetHelper.NugetConfigFilePath);
-                NugetHelper.LoadNugetConfigFile();
+                conf.Save(NugetHelper.NugetConfigFilePath);
             }
         }
     }

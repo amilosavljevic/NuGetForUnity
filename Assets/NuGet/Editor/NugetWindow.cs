@@ -141,7 +141,7 @@ namespace NugetForUnity
 		private readonly HashSet<NugetPackage> openCloneWindows = new HashSet<NugetPackage>();
 
 
-		private IEnumerable<NugetPackage> FilteredInstalledPackages
+		private List<NugetPackage> FilteredInstalledPackages
 		{
 			get
 			{
@@ -314,7 +314,7 @@ namespace NugetForUnity
 			try
 			{
 				// reload the NuGet.config file, in case it was changed after Unity opened, but before the manager window opened (now)
-				NugetHelper.LoadNugetConfigFile();
+				NugetHelper.ForceReloadNugetConfig();
 
 				// if we are entering playmode, don't do anything
 				if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -345,6 +345,10 @@ namespace NugetForUnity
 
 					// load the default icon from the Resources folder
 					defaultIcon = (Texture2D)Resources.Load("defaultIcon", typeof(Texture2D));
+				}
+				else
+				{
+					NugetHelper.UpdateInstalledPackages();
 				}
 
 				hasRefreshed = true;
@@ -499,10 +503,10 @@ namespace NugetForUnity
 			scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
 			EditorGUILayout.BeginVertical();
 
-			var filteredInstalledPackages = FilteredInstalledPackages.ToList();
-			if (filteredInstalledPackages.Count > 0)
+			var filteredInstalled = FilteredInstalledPackages;
+			if (filteredInstalled.Count > 0)
 			{
-				DrawPackages(filteredInstalledPackages);
+				DrawPackages(filteredInstalled);
 			}
 			else
 			{
