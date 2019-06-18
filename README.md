@@ -140,8 +140,9 @@ Read more information here: [http://docs.nuget.org/create/hosting-your-own-nuget
 * When uninstalling the package it will also delete all its dependencies that are not manually installed and that no other package depends on.
 * It only shows the manually installed packages by default in installed tab but there is an option to show them all.
 * It supports packages with Init.template which they can use to specify default initialization code that should be injected in the project on installation.
+* Each installed package also has a "Link Source" button which replaces its folder with a symbolic link (juncture on Windows) to that package's repo so one can easily work on package source when needed.
 
-#How to build
+# How to build
 There is a provided build.ps1 powershell script you should run to rebuild the unitypackage. For it to work you need to make sure you have `UnitySetup` and `VSSetup` powershell modules installed. You can check what modules you have by running `Get-Module -ListAvailable`. Custom modules are listed at the top. If you don't have this modules installed you need to run these commands to install them:
 ```
 Install-Module VSSetup -Scope CurrentUser -RequiredVersion 2.0.1.32208

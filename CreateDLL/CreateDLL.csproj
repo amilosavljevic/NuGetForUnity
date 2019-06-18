@@ -37,6 +37,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="System.ServiceModel.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Xml" />
@@ -50,6 +51,9 @@
   <ItemGroup>
     <Compile Include="..\Assets\NuGet\Editor\DependencyTreeViewer.cs">
       <Link>DependencyTreeViewer.cs</Link>
+    </Compile>
+    <Compile Include="..\Assets\NuGet\Editor\JunctionPoint.cs">
+      <Link>JunctionPoint.cs</Link>
     </Compile>
     <Compile Include="..\Assets\NuGet\Editor\NugetConfigFile.cs">
       <Link>NugetConfigFile.cs</Link>
@@ -92,6 +96,9 @@
     </Compile>
     <Compile Include="..\Assets\NuGet\Editor\RepositoryType.cs">
       <Link>RepositoryType.cs</Link>
+    </Compile>
+    <Compile Include="..\Assets\NuGet\Editor\SymbolicLink.cs">
+      <Link>SymbolicLink.cs</Link>
     </Compile>
     <EmbeddedResource Include=".Templates\AppInitializer.cs" />
     <EmbeddedResource Include=".Templates\AppInitializer.Generated.cs" />

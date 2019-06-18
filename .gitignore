@@ -77,3 +77,4 @@ bin
 /Packager/Assets/NuGet/Editor/NugetForUnity.dll
 /Packager/NuGetForUnity.unitypackage.log
 /CreateDLL/.vs
+*.csproj.user
