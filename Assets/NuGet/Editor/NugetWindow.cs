@@ -1092,6 +1092,7 @@ namespace NugetForUnity
 
 			if (GUILayout.Button("Link Source", linkSourceButtonWidth, installButtonHeight))
 			{
+				InstallPreCommitHook();
 				var sourcePath = GetSourceProjPath(package);
 				if (string.IsNullOrEmpty(sourcePath)) return;
 				if (Path.GetFileName(sourcePath) == "Source") sourcePath = Path.GetDirectoryName(sourcePath);
@@ -1140,6 +1141,42 @@ namespace NugetForUnity
 
 				AssetDatabase.Refresh();
 			}
+		}
+
+		private static void InstallPreCommitHook()
+		{
+			var gitFolder = Path.Combine(Directory.GetCurrentDirectory(), ".git/hooks");
+			var parentFolderName = "";
+			if (!Directory.Exists(gitFolder))
+			{
+				parentFolderName = Path.GetFileName(Directory.GetCurrentDirectory()) + "/";
+				var parentFolder = Path.GetDirectoryName(Directory.GetCurrentDirectory());
+				if (parentFolder == null) return;
+				gitFolder = Path.Combine(parentFolder, ".git/hooks");
+				if (!Directory.Exists(gitFolder)) return;
+			}
+
+			var preCommitHook = $@"
+if [ ""$(find {parentFolderName}Assets/Plugins/Packages/ -type l)"" != '' ]; then
+	cat <<\EOF
+Error: You can't commit while you have symbolic links in the packages.
+
+Symbolic links found under: {parentFolderName}Assets/Plugins/Packages/
+EOF
+	exit 1 
+fi
+";
+			preCommitHook = preCommitHook.Replace("\r", "");
+			var preCommitFile = Path.Combine(gitFolder, "pre-commit");
+			var preCommitContent = "#!/bin/sh";
+			if (File.Exists(preCommitFile))
+			{
+				preCommitContent = File.ReadAllText(preCommitFile);
+				if (preCommitContent.Contains(preCommitHook)) return;
+			}
+
+			preCommitContent += "\n\n" + preCommitHook;
+			File.WriteAllText(preCommitFile, preCommitContent);
 		}
 
 		private static string GetSourceProjPath(NugetPackage package)
