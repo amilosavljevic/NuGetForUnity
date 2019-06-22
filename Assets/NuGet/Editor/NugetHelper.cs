@@ -869,10 +869,6 @@
 						if (actualData != null) package.IsManuallyInstalled = actualData.IsManuallyInstalled;
 						installedPackages.Add(package.Id, package);
 					}
-					else
-					{
-						Debug.LogErrorFormat("Package is already in installed list: {0}", package.Id);
-					}
 				}
 			}
 
@@ -1257,6 +1253,7 @@
 					{
 						ProcessInitTemplate(initTemplatePath, package);
 						DeleteFile(initTemplatePath);
+						DeleteFile(initTemplatePath + ".meta");
 					}
 				}
 				catch (Exception e)
@@ -1345,7 +1342,7 @@
 			const string USES_KEY = "Uses:";
 			const string CUSTOM_EXCEPTION_LOGGING_KEY = "CustomExceptionLogging:";
 			const string INIT_CODE_KEY = "InitCode:";
-			const string INIT_SCENE_CODE_KEY = "InitSceneCode:";
+			const string INIT_SCENE_CODE_KEY = "SceneInitCode:";
 
 			var dependencies = package.Dependencies.Select(identifier => identifier.Id.Replace("nordeus.", "").Replace("unity.", "")).ToList();
 			var uses = new List<string>();
@@ -1439,7 +1436,7 @@
 				initCs = initCs.Substring(0, insertPos) + customExceptionLoggingCode + initCs.Substring(insertPos);
 			}
 
-			initCode = "\r\n\t\tpublic static void " + initMethodName + "()\r\n" + initCode;
+			initCode = "\r\n\t\tprivate static void " + initMethodName + "()\r\n" + initCode;
 			insertPos = initCs.LastIndexOf("\t}", StringComparison.Ordinal);
 			initCs = initCs.Substring(0, insertPos) + initCode + initCs.Substring(insertPos);
 			

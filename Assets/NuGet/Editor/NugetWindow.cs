@@ -334,6 +334,7 @@ namespace NugetForUnity
 
 				// set the window title
 				titleContent = new GUIContent("NuGet");
+				filteredInstalledPackages = null;
 
 				if (!hasRefreshed || forceFullRefresh)
 				{
@@ -1047,10 +1048,10 @@ namespace NugetForUnity
 		private void LinkUnlinkSourceButton(NugetPackage package)
 		{
 			var packagePath = Path.Combine(NugetHelper.NugetConfigFile.RepositoryPath, $"{package.Id}.{package.Version}");
-			var packageSources = Path.Combine(packagePath, "Source");
+			var packageSources = packagePath;
 			var packageEditorSources = Path.Combine(packagePath, "Editor");
 
-			var sourcesExists = SymbolicLink.Exists(packageSources);
+			var sourcesExists = SymbolicLink.Exists(packagePath);
 			if (!sourcesExists)
 			{
 				packageSources = Path.Combine(packagePath, "lib");
@@ -1065,23 +1066,27 @@ namespace NugetForUnity
 				{
 					if (sourcesExists) SymbolicLink.Delete(packageSources);
 					if (sourcesEditorExists) SymbolicLink.Delete(packageEditorSources);
-					var path = Path.Combine(packagePath, ".lib");
+					var path = Path.Combine(NugetHelper.NugetConfigFile.RepositoryPath, $".{package.Id}.{package.Version}");
 					if (Directory.Exists(path))
 					{
-						Directory.Move(path, Path.Combine(packagePath, "lib"));
-						if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "lib.meta"));
+						Directory.Move(path, packagePath);
+						if (File.Exists(path + ".meta")) File.Move(path + ".meta", packagePath + ".meta");
 					}
-					path = Path.Combine(packagePath, ".Source");
-					if (Directory.Exists(path))
+					else
 					{
-						Directory.Move(path, Path.Combine(packagePath, "Source"));
-						if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "Source.meta"));
-					}
-					path = Path.Combine(packagePath, ".Editor");
-					if (Directory.Exists(path))
-					{
-						Directory.Move(path, Path.Combine(packagePath, "Editor"));
-						if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "Editor.meta"));
+						path = Path.Combine(packagePath, ".lib");
+						if (Directory.Exists(path))
+						{
+							Directory.Move(path, Path.Combine(packagePath, "lib"));
+							if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "lib.meta"));
+						}
+
+						path = Path.Combine(packagePath, ".Editor");
+						if (Directory.Exists(path))
+						{
+							Directory.Move(path, Path.Combine(packagePath, "Editor"));
+							if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "Editor.meta"));
+						}
 					}
 				}
 
@@ -1108,35 +1113,43 @@ namespace NugetForUnity
 					return;
 				}
 				
-				var path = Path.Combine(packagePath, "Source");
-				if (Directory.Exists(path))
+				var spath = Path.Combine(packagePath, "Source");
+				if (!Directory.Exists(spath)) spath = Path.Combine(packagePath, "Content");
+				var libpath = Path.Combine(packagePath, "lib");
+				if (Directory.Exists(spath))
 				{
-					Directory.Move(path, Path.Combine(packagePath, ".Source"));
-					if (sourcesDirExists)
+					// If Source dir exists in package than we want to replace the whole package folder with a link
+					var packageParentPath = Path.GetDirectoryName(packagePath);
+					if (packageParentPath == null) return; // Should never happen
+					var packageDirName = Path.GetFileName(packagePath);
+
+					var hidePath = Path.Combine(packageParentPath, "." + packageDirName);
+
+					Directory.Move(packagePath, hidePath);
+
+					SymbolicLink.Create(packagePath, sourcePath);
+				}
+				else
+				{
+					// Otherwise we want to replace lib subfolder with a link to Source folder
+					if (Directory.Exists(libpath))
 					{
-						SymbolicLink.Create(path, sourcesDir);
-						sourcesDirExists = false;
+						Directory.Move(libpath, Path.Combine(packagePath, ".lib"));
+						if (sourcesDirExists) SymbolicLink.Create(libpath, sourcesDir);
+						else if (File.Exists(libpath + ".meta"))
+						{
+							File.Move(libpath + ".meta", Path.Combine(packagePath, ".lib.meta"));
+						}
 					}
+
+					// And if it exists also replace Editor folder with a link
+					var path = Path.Combine(packagePath, "Editor");
+					if (Directory.Exists(path)) Directory.Move(path, Path.Combine(packagePath, ".Editor"));
+					if (editorDirExists) SymbolicLink.Create(path, editorDir);
 					else if (File.Exists(path + ".meta"))
 					{
-						File.Move(path + ".meta", Path.Combine(packagePath, ".Source.meta"));
+						File.Move(path + ".meta", Path.Combine(packagePath, ".Editor.meta"));
 					}
-				}
-
-				path = Path.Combine(packagePath, "lib");
-				if (Directory.Exists(path)) Directory.Move(path, Path.Combine(packagePath, ".lib"));
-				if (sourcesDirExists) SymbolicLink.Create(path, sourcesDir);
-				else if (File.Exists(path + ".meta"))
-				{
-					File.Move(path + ".meta", Path.Combine(packagePath, ".lib.meta"));
-				}
-
-				path = Path.Combine(packagePath, "Editor");
-				if (Directory.Exists(path)) Directory.Move(path, Path.Combine(packagePath, ".Editor"));
-				if (editorDirExists) SymbolicLink.Create(path, editorDir);
-				else if (File.Exists(path + ".meta"))
-				{
-					File.Move(path + ".meta", Path.Combine(packagePath, ".Editor.meta"));
 				}
 
 				AssetDatabase.Refresh();
