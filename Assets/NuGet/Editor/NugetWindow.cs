@@ -1159,33 +1159,41 @@ namespace NugetForUnity
 		private static void InstallPreCommitHook()
 		{
 			var gitFolder = Path.Combine(Directory.GetCurrentDirectory(), ".git/hooks");
-			var parentFolderName = "";
 			if (!Directory.Exists(gitFolder))
 			{
-				parentFolderName = Path.GetFileName(Directory.GetCurrentDirectory()) + "/";
 				var parentFolder = Path.GetDirectoryName(Directory.GetCurrentDirectory());
 				if (parentFolder == null) return;
 				gitFolder = Path.Combine(parentFolder, ".git/hooks");
 				if (!Directory.Exists(gitFolder)) return;
 			}
 
-			var preCommitHook = $@"
-if [ ""$(find {parentFolderName}Assets/Plugins/Packages/ -type l)"" != '' ]; then
-	cat <<\EOF
-Error: You can't commit while you have symbolic links in the packages.
+			var preCommitHook = @"
+has_link() {
+    local path=""$1""
+    if echo ""$path"" | grep -vq '/'; then
+        return
+    fi
+    if [ -L ""$path"" ]; then
+		echo ""Error: You can't commit paths with symbolic links: '$path'""
+        exit 1
+    else
+        has_link ""${path%/*}""
+    fi
+}
 
-Symbolic links found under: {parentFolderName}Assets/Plugins/Packages/
-EOF
-	exit 1 
-fi
+while read path
+do
+    has_link ""$path""
+done< <(git diff --name-only --cached)
 ";
 			preCommitHook = preCommitHook.Replace("\r", "");
 			var preCommitFile = Path.Combine(gitFolder, "pre-commit");
-			var preCommitContent = "#!/bin/sh";
+			var preCommitContent = "#!/bin/bash";
 			if (File.Exists(preCommitFile))
 			{
 				preCommitContent = File.ReadAllText(preCommitFile);
 				if (preCommitContent.Contains(preCommitHook)) return;
+				preCommitContent = preCommitContent.Replace("#!/bin/sh", "#!/bin/bash");
 			}
 
 			preCommitContent += "\n\n" + preCommitHook;
