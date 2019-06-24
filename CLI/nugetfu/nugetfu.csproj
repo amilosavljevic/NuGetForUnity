@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Assets\NuGet\Editor\NugetConfigFile.cs">
+      <Link>NugetConfigFile.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\NugetFrameworkGroup.cs">
+      <Link>NugetFrameworkGroup.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\NugetHelper.cs">
+      <Link>NugetHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\NugetODataResponse.cs">
+      <Link>NugetODataResponse.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\NugetPackage.cs">
+      <Link>NugetPackage.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\NugetPackageIdentifier.cs">
+      <Link>NugetPackageIdentifier.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\NugetPackageSource.cs">
+      <Link>NugetPackageSource.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\NuspecContentFile.cs">
+      <Link>NuspecContentFile.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\NuspecFile.cs">
+      <Link>NuspecFile.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\PackagesConfigFile.cs">
+      <Link>PackagesConfigFile.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\RepositoryType.cs">
+      <Link>RepositoryType.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+</Project>

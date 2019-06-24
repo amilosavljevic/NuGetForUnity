@@ -60,7 +60,7 @@ namespace NugetForUnity
 
 			if (Path.IsPathRooted(RepositoryPath)) return;
 
-			var repositoryPath = Path.Combine(UnityEngine.Application.dataPath, RepositoryPath);
+			var repositoryPath = Path.Combine(SystemProxy.CurrentDir, RepositoryPath);
 			repositoryPath = Path.GetFullPath(repositoryPath);
 
 			RepositoryPath = repositoryPath;

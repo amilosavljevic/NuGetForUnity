@@ -13,7 +13,6 @@ using UnityEngine.Networking;
 
 namespace NugetForUnity
 {
-
 	/// <summary>
 	/// Represents the NuGet Package Manager Window in the Unity Editor.
 	/// </summary>
@@ -1169,21 +1168,21 @@ namespace NugetForUnity
 
 			var preCommitHook = @"
 has_link() {
-    local path=""$1""
-    if echo ""$path"" | grep -vq '/'; then
-        return
-    fi
-    if [ -L ""$path"" ]; then
+	local path=""$1""
+	if echo ""$path"" | grep -vq '/'; then
+		return
+	fi
+	if [ -L ""$path"" ]; then
 		echo ""Error: You can't commit paths with symbolic links: '$path'""
-        exit 1
-    else
-        has_link ""${path%/*}""
-    fi
+		exit 1
+	else
+		has_link ""${path%/*}""
+	fi
 }
 
 while read path
 do
-    has_link ""$path""
+	has_link ""$path""
 done< <(git diff --name-only --cached)
 ";
 			preCommitHook = preCommitHook.Replace("\r", "");

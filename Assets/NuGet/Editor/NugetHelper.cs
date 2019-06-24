@@ -1,21 +1,15 @@
-﻿namespace NugetForUnity
-{
-	using System;
-	using System.Collections;
-	using System.Collections.Generic;
-	using System.Diagnostics;
-	using System.IO;
-	using System.IO.Compression;
-	using System.Linq;
-	using System.Net;
-	using System.Text;
-	using UnityEditor;
-	using UnityEngine;
-	using UnityEngine.Networking;
-	using Debug = UnityEngine.Debug;
-	using System.Security.Cryptography;
-	using System.Text.RegularExpressions;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Text.RegularExpressions;
 
+namespace NugetForUnity
+{
 	/// <summary>
 	/// A set of helper methods that act as a wrapper around nuget.exe
 	/// 
@@ -28,12 +22,12 @@
 		/// <summary>
 		/// The path to the nuget.config file.
 		/// </summary>
-		public static readonly string NugetConfigFilePath = Path.Combine(Application.dataPath, "./NuGet.config");
+		public static readonly string NugetConfigFilePath = Path.Combine(SystemProxy.CurrentDir, "./NuGet.config");
 
 		/// <summary>
 		/// The path to the packages.config file.
 		/// </summary>
-		private static readonly string PackagesConfigFilePath = Path.Combine(Application.dataPath, "./packages.config");
+		private static readonly string PackagesConfigFilePath = Path.Combine(SystemProxy.CurrentDir, "./packages.config");
 
 		/// <summary>
 		/// The path where to put created (packed) and downloaded (not installed yet) .nupkg files.
@@ -92,7 +86,7 @@
 		/// <summary>
 		/// The current .NET version being used (2.0 [actually 3.5], 4.6, etc).
 		/// </summary>
-		internal static ApiCompatibilityLevel DotNetVersion;
+		internal static int DotNetVersion;
 
 		private static NugetConfigFile nugetConfigFile;
 
@@ -102,12 +96,12 @@
 		static NugetHelper()
 		{
 			// if we are entering playmode, don't do anything
-			if (EditorApplication.isPlayingOrWillChangePlaymode)
+			if (SystemProxy.IsPlayingOrWillChangePlaymode)
 			{
 				return;
 			}
 
-			DotNetVersion = PlayerSettings.GetApiCompatibilityLevel(EditorUserBuildSettings.selectedBuildTargetGroup);
+			DotNetVersion = SystemProxy.GetApiCompatibilityLevel();
 
 			// Load the NuGet.config file
 			nugetConfigFile = LoadNugetConfigFile();
@@ -117,11 +111,6 @@
 			{
 				Directory.CreateDirectory(PackOutputDirectory);
 			}
-
-			// restore packages - this will be called EVERY time the project is loaded or a code-file changes.
-			// But we in Nordeus want to commit our packages so builds are faster and we don't want to run auto Restore.
-			// Note that this class also had [InitializeOnLoad] attribute so it runs right after each compilation
-			// Restore(); 
 		}
 
 		/// <summary>
@@ -144,10 +133,10 @@
 			}
 			else
 			{
-				Debug.LogFormat("No NuGet.config file found. Creating default at {0}", NugetConfigFilePath);
+				SystemProxy.Log($"No NuGet.config file found. Creating default at {NugetConfigFilePath}");
 
 				result = NugetConfigFile.CreateDefaultFile(NugetConfigFilePath);
-				AssetDatabase.Refresh();
+				SystemProxy.RefreshAssets();
 			}
 
 			// parse any command line arguments
@@ -205,7 +194,7 @@
 		private static void RunNugetProcess(string arguments, bool logOuput = true)
 		{
 			// Try to find any nuget.exe in the package tools installation location
-			var toolsPackagesFolder = Path.Combine(Application.dataPath, "../Packages");
+			var toolsPackagesFolder = Path.Combine(SystemProxy.CurrentDir, "../Packages");
 
 			// create the folder to prevent an exception when getting the files
 			Directory.CreateDirectory(toolsPackagesFolder);
@@ -213,16 +202,16 @@
 			var files = Directory.GetFiles(toolsPackagesFolder, "nuget.exe", SearchOption.AllDirectories);
 			if (files.Length > 1)
 			{
-				Debug.LogWarningFormat("More than one nuget.exe found. Using first one.");
+				SystemProxy.LogWarning("More than one nuget.exe found. Using first one.");
 			}
 			else if (files.Length < 1)
 			{
-				Debug.LogWarningFormat("No nuget.exe found! Attemping to install the NuGet.CommandLine package.");
+				SystemProxy.LogWarning("No nuget.exe found! Attemping to install the NuGet.CommandLine package.");
 				InstallIdentifier(new NugetPackageIdentifier("NuGet.CommandLine", "2.8.6"));
 				files = Directory.GetFiles(toolsPackagesFolder, "nuget.exe", SearchOption.AllDirectories);
 				if (files.Length < 1)
 				{
-					Debug.LogErrorFormat("nuget.exe still not found. Quiting...");
+					SystemProxy.LogError("nuget.exe still not found. Quiting...");
 					return;
 				}
 			}
@@ -254,20 +243,20 @@
 
 			if (!process.WaitForExit(TimeOut))
 			{
-				Debug.LogWarning("NuGet took too long to finish.  Killing operation.");
+				SystemProxy.LogWarning("NuGet took too long to finish.  Killing operation.");
 				process.Kill();
 			}
 
 			var error = process.StandardError.ReadToEnd();
 			if (!string.IsNullOrEmpty(error))
 			{
-				Debug.LogError(error);
+				SystemProxy.LogError(error);
 			}
 
 			var output = process.StandardOutput.ReadToEnd();
 			if (logOuput && !string.IsNullOrEmpty(output))
 			{
-				Debug.Log(output);
+				SystemProxy.Log(output);
 			}
 		}
 
@@ -338,7 +327,7 @@
 
 			if (Directory.Exists(packageInstallDirectory + "/lib"))
 			{
-				var intDotNetVersion = (int)DotNetVersion; // c
+				var intDotNetVersion = DotNetVersion; // c
 				//bool using46 = DotNetVersion == ApiCompatibilityLevel.NET_4_6; // NET_4_6 option was added in Unity 5.6
 				var using46 = intDotNetVersion == 3; // NET_4_6 = 3 in Unity 5.6 and Unity 2017.1 - use the hard-coded int value to ensure it works in earlier versions of Unity
 				var usingStandard2 = intDotNetVersion == 6; // using .net standard 2.0                
@@ -482,7 +471,7 @@
 			if (Directory.Exists(packageInstallDirectory + "/tools"))
 			{
 				// Move the tools folder outside of the Unity Assets folder
-				var toolsInstallDirectory = Path.Combine(Application.dataPath, $"../Packages/{package.Id}.{package.Version}/tools");
+				var toolsInstallDirectory = Path.Combine(SystemProxy.CurrentDir, $"../Packages/{package.Id}.{package.Version}/tools");
 
 				LogVerbose("Moving {0} to {1}", packageInstallDirectory + "/tools", toolsInstallDirectory);
 
@@ -518,7 +507,7 @@
 			// if there are Unity plugin DLLs, copy them to the Unity Plugins folder (Assets/Plugins)
 			if (Directory.Exists(packageInstallDirectory + "/unityplugin"))
 			{
-				var pluginsDirectory = Application.dataPath + "/Plugins/";
+				var pluginsDirectory = SystemProxy.CurrentDir + "/Plugins/";
 
 				if (!Directory.Exists(pluginsDirectory))
 				{
@@ -538,7 +527,7 @@
 					}
 					catch (UnauthorizedAccessException)
 					{
-						Debug.LogWarningFormat("{0} couldn't be overwritten. It may be a native plugin already locked by Unity. Please close Unity and manually delete it.", newFilePath);
+						SystemProxy.LogWarning($"{newFilePath} couldn't be overwritten. It may be a native plugin already locked by Unity. Please close Unity and manually delete it.");
 					}
 				}
 
@@ -550,7 +539,7 @@
 			// if there are Unity StreamingAssets, copy them to the Unity StreamingAssets folder (Assets/StreamingAssets)
 			if (Directory.Exists(packageInstallDirectory + "/StreamingAssets"))
 			{
-				var streamingAssetsDirectory = Application.dataPath + "/StreamingAssets/";
+				var streamingAssetsDirectory = SystemProxy.CurrentDir + "/StreamingAssets/";
 
 				if (!Directory.Exists(streamingAssetsDirectory))
 				{
@@ -571,7 +560,7 @@
 					}
 					catch (Exception e)
 					{
-						Debug.LogWarningFormat("{0} couldn't be moved. \n{1}", newFilePath, e.ToString());
+						SystemProxy.LogWarning($"{newFilePath} couldn't be moved. \n{e}");
 					}
 				}
 
@@ -593,7 +582,7 @@
 					}
 					catch (Exception e)
 					{
-						Debug.LogWarningFormat("{0} couldn't be moved. \n{1}", newDirectoryPath, e.ToString());
+						SystemProxy.LogWarning($"{newDirectoryPath} couldn't be moved. \n{e}");
 					}
 				}
 
@@ -640,7 +629,7 @@
 
 				if (!File.Exists(packagePath))
 				{
-					Debug.LogErrorFormat("NuGet package not found: {0}", packagePath);
+					SystemProxy.LogError($"NuGet package not found: {packagePath}");
 					return;
 				}
 			}
@@ -719,7 +708,7 @@
 				Uninstall(package, false);
 			}
 
-			AssetDatabase.Refresh();
+			SystemProxy.RefreshAssets();
 		}
 
 		/// <summary>
@@ -743,7 +732,7 @@
 			var metaFile = Path.Combine(NugetConfigFile.RepositoryPath, $"{foundPackage.Id}.{foundPackage.Version}.meta");
 			DeleteFile(metaFile);
 
-			var toolsInstallDirectory = Path.Combine(Application.dataPath, $"../Packages/{foundPackage.Id}.{foundPackage.Version}");
+			var toolsInstallDirectory = Path.Combine(SystemProxy.CurrentDir, $"../Packages/{foundPackage.Id}.{foundPackage.Version}");
 			DeleteDirectory(toolsInstallDirectory);
 
 			installedPackages.Remove(foundPackage.Id);
@@ -773,7 +762,7 @@
 			}
 
 			if (refreshAssets)
-				AssetDatabase.Refresh();
+				SystemProxy.RefreshAssets();
 		}
 
 		/// <summary>
@@ -802,7 +791,7 @@
 
 			foreach (var update in updates)
 			{
-				EditorUtility.DisplayProgressBar($"Updating to {update.Id} {update.Version}", "Installing All Updates", currentProgress);
+				SystemProxy.DisplayProgress($"Updating to {update.Id} {update.Version}", "Installing All Updates", currentProgress);
 
 				var installedPackage = packagesToUpdate.FirstOrDefault(p => p.Id == update.Id);
 				if (installedPackage != null)
@@ -811,15 +800,15 @@
 				}
 				else
 				{
-					Debug.LogErrorFormat("Trying to update {0} to {1}, but no version is installed!", update.Id, update.Version);
+					SystemProxy.LogError($"Trying to update {update.Id} to {update.Version}, but no version is installed!");
 				}
 
 				currentProgress += progressStep;
 			}
 
-			AssetDatabase.Refresh();
+			SystemProxy.RefreshAssets();
 
-			EditorUtility.ClearProgressBar();
+			SystemProxy.ClearProgress();
 		}
 
 		/// <summary>
@@ -854,7 +843,7 @@
 					}
 					else
 					{
-						Debug.LogErrorFormat("Package is already in installed list: {0}", package.Id);
+						SystemProxy.LogError($"Package is already in installed list: {package.Id}");
 					}
 				}
 
@@ -1089,7 +1078,7 @@
 			}
 			else
 			{
-				Debug.LogErrorFormat("Could not find {0} {1} or greater.", package.Id, package.Version);
+				SystemProxy.LogError($"Could not find {package.Id} {package.Version} or greater.");
 				return false;
 			}
 		}
@@ -1103,11 +1092,7 @@
 		{
 			if (NugetConfigFile.Verbose)
 			{
-				var stackTraceLogType = Application.GetStackTraceLogType(LogType.Log);
-				Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
-				Debug.LogFormat(format, args);
-
-				Application.SetStackTraceLogType(LogType.Log, stackTraceLogType);
+				SystemProxy.Log(string.Format(format, args));
 			}
 		}
 
@@ -1148,7 +1133,7 @@
 
 
 				if (refreshAssets)
-					EditorUtility.DisplayProgressBar($"Installing {package.Id} {package.Version}", "Installing Dependencies", 0.1f);
+					SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Installing Dependencies", 0.1f);
 
 				// install all dependencies
 				foreach (var dependency in package.Dependencies)
@@ -1196,7 +1181,7 @@
 						LogVerbose("Downloading package {0} {1}", package.Id, package.Version);
 
 						if (refreshAssets)
-							EditorUtility.DisplayProgressBar($"Installing {package.Id} {package.Version}", "Downloading Package", 0.3f);
+							SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Downloading Package", 0.3f);
 
 						var objStream = RequestUrl(package.DownloadUrl, package.PackageSource.UserName,
 													package.PackageSource.ExpandedPassword, timeOut: null);
@@ -1208,7 +1193,7 @@
 				}
 
 				if (refreshAssets)
-					EditorUtility.DisplayProgressBar($"Installing {package.Id} {package.Version}", "Extracting Package", 0.6f);
+					SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Extracting Package", 0.6f);
 
 				string initTemplatePath = null;
 
@@ -1241,11 +1226,11 @@
 				}
 				else
 				{
-					Debug.LogErrorFormat("File not found: {0}", cachedPackagePath);
+					SystemProxy.LogError($"File not found: {cachedPackagePath}");
 				}
 
 				if (refreshAssets)
-					EditorUtility.DisplayProgressBar($"Installing {package.Id} {package.Version}", "Cleaning Package", 0.9f);
+					SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Cleaning Package", 0.9f);
 
 				try
 				{
@@ -1258,7 +1243,7 @@
 				}
 				catch (Exception e)
 				{
-					Debug.LogError("Failed processing init template " + e);
+					SystemProxy.LogError("Failed processing init template " + e);
 				}
 
 				// clean
@@ -1270,16 +1255,16 @@
 			}
 			catch (Exception e)
 			{
-				Debug.LogErrorFormat("Unable to install package {0} {1}\n{2}", package.Id, package.Version, e.ToString());
+				SystemProxy.LogError($"Unable to install package {package.Id} {package.Version}\n{e}");
 				installSuccess = false;
 			}
 			finally
 			{
 				if (refreshAssets)
 				{
-					EditorUtility.DisplayProgressBar($"Installing {package.Id} {package.Version}", "Importing Package", 0.95f);
-					AssetDatabase.Refresh();
-					EditorUtility.ClearProgressBar();
+					SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Importing Package", 0.95f);
+					SystemProxy.RefreshAssets();
+					SystemProxy.ClearProgress();
 				}
 			}
 
@@ -1295,7 +1280,7 @@
 				var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
 				if (stream == null)
 				{
-					Debug.LogError("Failed to load embedded CreateDLL..Templates." + name);
+					SystemProxy.LogError("Failed to load embedded CreateDLL..Templates." + name);
 					return null;
 				}
 
@@ -1305,7 +1290,7 @@
 				}
 			}
 
-			var initCsDir = Path.Combine(Application.dataPath, "Scripts/Initialization");
+			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
 			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
 			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
 
@@ -1544,7 +1529,7 @@
 				{
 					if (package != null)
 					{
-						EditorUtility.DisplayProgressBar("Restoring NuGet Packages", $"Restoring {package.Id} {package.Version}", currentProgress);
+						SystemProxy.DisplayProgress("Restoring NuGet Packages", $"Restoring {package.Id} {package.Version}", currentProgress);
 
 						if (!IsInstalled(package))
 						{
@@ -1564,15 +1549,15 @@
 			}
 			catch (Exception e)
 			{
-				Debug.LogErrorFormat("{0}", e.ToString());
+				SystemProxy.LogError(e.ToString());
 			}
 			finally
 			{
 				stopwatch.Stop();
 				LogVerbose("Restoring packages took {0} ms", stopwatch.ElapsedMilliseconds);
 
-				AssetDatabase.Refresh();
-				EditorUtility.ClearProgressBar();
+				SystemProxy.RefreshAssets();
+				SystemProxy.ClearProgress();
 			}
 		}
 
@@ -1624,138 +1609,14 @@
 			return isInstalled;
 		}
 
-		public static void DownloadAndSetIcon(NugetPackage package, string url)
-		{
-			StartCoroutine(DownloadAndSetIconRoutine(package, url));
-		}
-
-		private static readonly List<IEnumerator> activeEnumerators = new List<IEnumerator>();
-		private static readonly List<IEnumerator> toRemove = new List<IEnumerator>();
-
-		private static void StartCoroutine(IEnumerator enumerator)
-		{
-			if (!enumerator.MoveNext()) return;
-
-			if (activeEnumerators.Count == 0)
-			{
-				EditorApplication.update -= RunCoroutines;
-				EditorApplication.update += RunCoroutines;
-			}
-
-			activeEnumerators.Add(enumerator);
-		}
-
-		private static void RunCoroutines()
-		{
-			foreach (var enumerator in activeEnumerators)
-			{
-				if (!enumerator.MoveNext()) toRemove.Add(enumerator);
-			}
-
-			foreach (var enumerator in toRemove)
-			{
-				activeEnumerators.Remove(enumerator);
-			}
-
-			toRemove.Clear();
-
-			if (activeEnumerators.Count == 0)
-			{
-				EditorApplication.update -= RunCoroutines;
-				LogVerbose("All Nuget coroutines done");
-			}
-		}
-
-		/// <summary>
-		/// Downloads an image at the given URL and converts it to a Unity Texture2D.
-		/// </summary>
-		/// <param name="package">The package to set the icon on</param>
-		/// <param name="url">The URL of the image to download.</param>
-		private static IEnumerator DownloadAndSetIconRoutine(NugetPackage package, string url)
-		{
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-
-			var fromCache = false;
-			if (ExistsInDiskCache(url))
-			{
-				url = "file:///" + GetFilePath(url);
-				fromCache = true;
-			}
-
-			Texture2D result = null;
-
-			using (var request = UnityWebRequestTexture.GetTexture(url, false))
-			{
-				const int timeout = 5;
-				request.timeout = timeout;
-				// Since we are handling coroutines by ourselves we can't yield return this directly
-				request.SendWebRequest();
-				while (!request.isDone && stopwatch.ElapsedMilliseconds < timeout * 1000) yield return null;
-
-				if (request.isDone && !request.isNetworkError && !request.isHttpError)
-				{
-					result = DownloadHandlerTexture.GetContent(request);
-					LogVerbose("Downloading image {0} took {1} ms", url, stopwatch.ElapsedMilliseconds);
-				}
-				else if (!string.IsNullOrEmpty(request.error))
-				{
-					LogVerbose("Request {0} error after {1} ms: {2}", url, stopwatch.ElapsedMilliseconds, request.error);
-				}
-				else LogVerbose("Request {0} timed out after {1} ms", url, stopwatch.ElapsedMilliseconds);
-
-
-				if (result != null && !fromCache)
-				{
-					CacheTextureOnDisk(url, request.downloadHandler.data);
-				}
-			}
-
-			package.Icon = result;
-		}
-
-		private static void CacheTextureOnDisk(string url, byte[] bytes)
-		{
-			var diskPath = GetFilePath(url);
-			File.WriteAllBytes(diskPath, bytes);
-		}
-
-		private static bool ExistsInDiskCache(string url)
-		{
-			return File.Exists(GetFilePath(url));
-		}
-
-		private static string GetFilePath(string url)
-		{
-			return Path.Combine(Application.temporaryCachePath, GetHash(url));
-		}
-
-		private static string GetHash(string s)
-		{
-			if (string.IsNullOrEmpty(s))
-				return null;
-			var md5 = new MD5CryptoServiceProvider();
-			var data = md5.ComputeHash(Encoding.Default.GetBytes(s));
-			var sBuilder = new StringBuilder();
-			for (var i = 0; i < data.Length; i++)
-			{
-				sBuilder.Append(data[i].ToString("x2"));
-			}
-
-			return sBuilder.ToString();
-		}
-
 		/// <summary>
 		/// Data class returned from nuget credential providers in a JSON format. As described here:
 		/// https://docs.microsoft.com/en-us/nuget/reference/extensibility/nuget-exe-credential-providers#creating-a-nugetexe-credential-provider
 		/// </summary>
-		[Serializable]
 		private struct CredentialProviderResponse
 		{
-#pragma warning disable 0649
 			public string Username;
 			public string Password;
-#pragma warning disable 0649
 		}
 
 		/// <summary>
@@ -1816,7 +1677,7 @@
 				}
 				catch (Exception e)
 				{
-					Debug.LogErrorFormat("Failed to download credential provider from {0}: {1}", credentialProviderRequest.Address, e.Message);
+					SystemProxy.LogError($"Failed to download credential provider from {credentialProviderRequest.Address}: {e.Message}");
 				}
 			}
 
@@ -1847,7 +1708,7 @@
 				}
 
 				// Try to find any nuget.exe in the package tools installation location
-				var toolsPackagesFolder = Path.Combine(Application.dataPath, "../Packages");
+				var toolsPackagesFolder = Path.Combine(SystemProxy.CurrentDir, "../Packages");
 				possibleCredentialProviderPaths.Add(toolsPackagesFolder);
 
 				// Search through all possible paths to find the credential provider.
@@ -1891,16 +1752,33 @@
 							break; // Not the right provider
 						case CredentialProviderExitCode.Failure: // Right provider, failure to get creds
 						{
-							Debug.LogErrorFormat("Failed to get credentials from {0}!\n\tOutput\n\t{1}\n\tErrors\n\t{2}", providerPath, output, errors);
+							SystemProxy.LogError($"Failed to get credentials from {providerPath}!\n\tOutput\n\t{output}\n\tErrors\n\t{errors}");
 							return null;
 						}
 						case CredentialProviderExitCode.Success:
 						{
-							return JsonUtility.FromJson<CredentialProviderResponse>(output);
+							output = output.Trim('{', '}', ' ', '\t', '\r', '\n');
+							var lines = output.Split(',');
+							var result = new CredentialProviderResponse();
+							foreach (var line in lines)
+							{
+								var keyVal = line.Split(':');
+								if (keyVal.Length != 2) continue;
+								if (keyVal[0].Contains(nameof(CredentialProviderResponse.Username)))
+								{
+									result.Username = keyVal[1].Trim(' ', '\t', '"');
+								}
+								else if (keyVal[0].Contains(nameof(CredentialProviderResponse.Password)))
+								{
+									result.Password = keyVal[1].Trim(' ', '\t', '"');
+								}
+							}
+
+							return result;
 						}
 						default:
 						{
-							Debug.LogWarningFormat("Unrecognized exit code {0} from {1} {2}", process.ExitCode, providerPath, process.StartInfo.Arguments);
+							SystemProxy.LogWarning($"Unrecognized exit code {process.ExitCode} from {providerPath} {process.StartInfo.Arguments}");
 							break;
 						}
 					}

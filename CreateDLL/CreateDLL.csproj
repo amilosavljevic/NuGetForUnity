@@ -100,6 +100,9 @@
     <Compile Include="..\Assets\NuGet\Editor\SymbolicLink.cs">
       <Link>SymbolicLink.cs</Link>
     </Compile>
+    <Compile Include="..\Assets\NuGet\Editor\SystemProxy.cs">
+      <Link>SystemProxy.cs</Link>
+    </Compile>
     <EmbeddedResource Include=".Templates\AppInitializer.cs" />
     <EmbeddedResource Include=".Templates\AppInitializer.Generated.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

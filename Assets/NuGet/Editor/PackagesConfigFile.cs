@@ -1,13 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Xml.Linq;
 
 namespace NugetForUnity
 {
-	using System.Collections.Generic;
-	using System.IO;
-	using System.Xml.Linq;
-	using UnityEditor;
-	using UnityEngine;
-
 	/// <summary>
 	/// Represents a package.config file that holds the NuGet package dependencies for the project.
 	/// </summary>
@@ -29,13 +26,13 @@ namespace NugetForUnity
 			{
 				if (existingPackage < package)
 				{
-					Debug.LogWarningFormat("{0} {1} is already listed in the packages.config file.  Updating to {2}", existingPackage.Id, existingPackage.Version, package.Version);
+					SystemProxy.LogWarning($"{existingPackage.Id} {existingPackage.Version} is already listed in the packages.config file.  Updating to {package.Version}");
 					Packages.Remove(existingPackage);
 					Packages.Add(package);
 				}
 				else if (existingPackage > package)
 				{
-					Debug.LogWarningFormat("Trying to add {0} {1} to the packages.config file.  {2} is already listed, so using that.", package.Id, package.Version, existingPackage.Version);
+					SystemProxy.LogWarning($"Trying to add {package.Id} {package.Version} to the packages.config file.  {existingPackage.Version} is already listed, so using that.");
 				}
 			}
 			else
@@ -64,11 +61,11 @@ namespace NugetForUnity
 			// Create a package.config file, if there isn't already one in the project
 			if (!File.Exists(filepath))
 			{
-				Debug.LogFormat("No packages.config file found. Creating default at {0}", filepath);
+				SystemProxy.Log($"No packages.config file found. Creating default at {filepath}");
 
 				configFile.Save(filepath);
 				
-				AssetDatabase.Refresh();
+				SystemProxy.RefreshAssets();
 			}
 
 			var packagesFile = XDocument.Load(filepath);

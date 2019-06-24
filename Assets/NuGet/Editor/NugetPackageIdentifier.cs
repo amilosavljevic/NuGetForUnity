@@ -1,7 +1,7 @@
-﻿namespace NugetForUnity
-{
-	using System;
+﻿using System;
 
+namespace NugetForUnity
+{
 	/// <summary>
 	/// Represents an identifier for a NuGet package.  It contains only an ID and a Version number.
 	/// </summary>
@@ -400,7 +400,7 @@
 			}
 			catch (Exception)
 			{
-				UnityEngine.Debug.LogErrorFormat("Compare Error: {0} {1}", versionA, versionB);
+				SystemProxy.LogError($"Compare Error: {versionA} {versionB}");
 				return -1;
 			}
 		}

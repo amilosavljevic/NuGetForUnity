@@ -142,6 +142,7 @@ Read more information here: [http://docs.nuget.org/create/hosting-your-own-nuget
 * It supports packages with Init.template which they can use to specify default initialization code that should be injected in the project on installation.
 * Each installed package also has a "Link Source" button which replaces its folder with a symbolic link (juncture on Windows) to that package's repo so one can easily work on package source when needed.
 * Added Create New Package option which allows one to create a template source package with a symbolic link to it within the project
+* Added a console application which can be used to run unity specific restore from console without unity
 
 # How to build
 There is a provided build.ps1 powershell script you should run to rebuild the unitypackage. For it to work you need to make sure you have `UnitySetup` and `VSSetup` powershell modules installed. You can check what modules you have by running `Get-Module -ListAvailable`. Custom modules are listed at the top. If you don't have this modules installed you need to run these commands to install them:

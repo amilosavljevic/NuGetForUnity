@@ -1,8 +1,8 @@
-﻿namespace NugetForUnity
-{
-	using System;
-	using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
+namespace NugetForUnity
+{
 	/// <summary>
 	/// Represents a package available from NuGet.
 	/// </summary>
@@ -106,7 +106,7 @@
 
 			if (!string.IsNullOrEmpty(nuspec.IconUrl))
 			{
-				NugetHelper.DownloadAndSetIcon(package, nuspec.IconUrl);
+				SystemProxy.DownloadAndSetIcon(package, nuspec.IconUrl);
 			}
 
 			package.RepositoryUrl = nuspec.RepositoryUrl;
