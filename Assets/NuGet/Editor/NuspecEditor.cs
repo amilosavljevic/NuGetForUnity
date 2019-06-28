@@ -82,7 +82,7 @@ namespace NugetForUnity
 			if (filepath == null) return;
 
 			var packageName = Path.GetFileName(filepath);
-			filepath = Path.Combine(filepath, packageName + " .nuspec");
+			filepath = Path.Combine(filepath, packageName + ".nuspec");
 
 			var file = new NuspecFile
 			{
