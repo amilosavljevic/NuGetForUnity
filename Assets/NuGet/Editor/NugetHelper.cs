@@ -1655,6 +1655,7 @@ namespace NugetForUnity
 			foreach (var folder in directories)
 			{
 				var name = Path.GetFileName(folder);
+				if (!string.IsNullOrEmpty(name) && name[0] == '.') continue;
 				var installed = false;
 				foreach (var package in PackagesConfigFile.Packages)
 				{
