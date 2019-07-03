@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 namespace NugetForUnity
@@ -18,10 +19,22 @@ namespace NugetForUnity
 		/// </summary>
 		private static Vector2 scrollPosition;
 
+		[SettingsProvider]
+		public static SettingsProvider CreateNugetSettingsProvider()
+		{
+			var provider = new SettingsProvider("Preferences/Nuget", SettingsScope.User)
+			{
+				label = "NuGet for Unity",
+				keywords = new HashSet<string>(new [] {"nuget", "package", "nupkg"}),
+				guiHandler = (searchContext) => PreferencesGUI()
+			};
+
+			return provider;
+		}
+
 		/// <summary>
 		/// Draws the preferences GUI inside the Unity preferences window in the Editor.
 		/// </summary>
-		[PreferenceItem("NuGet For Unity")]
 		public static void PreferencesGUI()
 		{
 			EditorGUILayout.LabelField($"Version: {NuGetForUnityVersion}");
