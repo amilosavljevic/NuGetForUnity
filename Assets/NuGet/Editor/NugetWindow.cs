@@ -680,6 +680,11 @@ namespace NugetForUnity
 						showAllInstalledPackages = newVal;
 						lastInstalledSearchTerm = null;
 					}
+
+					if (NugetHelper.NugetConfigFile.AllowUninstallAll && GUILayout.Button("Uninstall All", GUILayout.Width(100)))
+					{
+						NugetHelper.UninstallAll();
+					}
 				}
 
 				using (new EditorGUILayout.HorizontalScope())

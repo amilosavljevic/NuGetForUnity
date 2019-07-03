@@ -49,6 +49,8 @@ namespace NugetForUnity
 
 			conf.SavedRepositoryPath = EditorGUILayout.TextField("Packages Directory", conf.SavedRepositoryPath);
 
+			conf.AllowUninstallAll = EditorGUILayout.Toggle("Allow Uninstall All", conf.AllowUninstallAll);
+
 			EditorGUILayout.LabelField("Package Sources:");
 
 			scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);

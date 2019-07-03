@@ -54,6 +54,11 @@ namespace NugetForUnity
 		/// </summary>
 		public string SavedRepositoryPath { get; set; }
 
+		/// <summary>
+		/// Gets or sets whether to delete init methods that were injected when package was installed
+		/// </summary>
+		public bool AllowUninstallAll { get; set; }
+
 		private void RefreshRepositoryPath()
 		{
 			RepositoryPath = Environment.ExpandEnvironmentVariables(SavedRepositoryPath);
@@ -133,6 +138,12 @@ namespace NugetForUnity
 			addElement = new XElement("add");
 			addElement.Add(new XAttribute("key", "DefaultPushSource"));
 			addElement.Add(new XAttribute("value", DefaultPushSource));
+			config.Add(addElement);
+
+			// save the DeleteInitCode setting
+			addElement = new XElement("add");
+			addElement.Add(new XAttribute("key", "AllowUninstallAll"));
+			addElement.Add(new XAttribute("value", AllowUninstallAll));
 			config.Add(addElement);
 
 			if (Verbose)
@@ -297,6 +308,10 @@ namespace NugetForUnity
 					else if (string.Equals(key, "ReadOnlyPackageFiles", StringComparison.OrdinalIgnoreCase))
 					{
 						configFile.ReadOnlyPackageFiles = bool.Parse(value);
+					}
+					else if (string.Equals(key, "AllowUninstallAll", StringComparison.OrdinalIgnoreCase))
+					{
+						configFile.AllowUninstallAll = bool.Parse(value);
 					}
 				}
 			}

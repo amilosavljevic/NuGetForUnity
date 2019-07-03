@@ -241,6 +241,7 @@ namespace NugetForUnity
 											 StandardOutputEncoding = Encoding.GetEncoding(850)
 										 });
 
+			// ReSharper disable once PossibleNullReferenceException
 			if (!process.WaitForExit(TimeOut))
 			{
 				SystemProxy.LogWarning("NuGet took too long to finish.  Killing operation.");
@@ -437,6 +438,7 @@ namespace NugetForUnity
 							directoryName == "net35-unity subset v3.5")
 						{
 							// Keep all directories targeting Unity within a package
+							// ReSharper disable once PossibleNullReferenceException
 							var parentName = directory.Parent.FullName;
 							selectedDirectories.Add(Path.Combine(parentName, "unity"));
 							selectedDirectories.Add(Path.Combine(parentName, "net35-unity full v3.5"));
@@ -716,6 +718,45 @@ namespace NugetForUnity
 				Uninstall(package, false);
 			}
 
+			string LoadInitClassFile(string name)
+			{
+				var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
+				if (stream == null)
+				{
+					SystemProxy.LogError("Failed to load embedded CreateDLL..Templates." + name);
+					return null;
+				}
+
+				using (var streamReader = new StreamReader(stream, Encoding.UTF8))
+				{
+					return streamReader.ReadToEnd();
+				}
+			}
+
+			// Reset Init files
+			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
+			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
+			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
+
+			var initCs = LoadInitClassFile("AppInitializer.cs");
+			var generatedInitCs = LoadInitClassFile("AppInitializer.Generated.cs");
+
+			if (initCs != null && generatedInitCs != null)
+			{
+				// We guarantee Windows line breaks
+				var newLinesRegex = new Regex(@"\r\n?|\n");
+
+				initCs = newLinesRegex.Replace(initCs, "\r\n");
+				generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
+
+				// Make sure the dir exists
+				Directory.CreateDirectory(initCsDir);
+
+				File.WriteAllText(initCsPath, initCs);
+				File.WriteAllText(generatedInitCsPath, generatedInitCs);
+
+			}
+
 			SystemProxy.RefreshAssets();
 		}
 
@@ -771,6 +812,42 @@ namespace NugetForUnity
 
 			if (refreshAssets)
 				SystemProxy.RefreshAssets();
+		}
+
+		private static void DeleteInitMethods(NugetPackage package)
+		{
+			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
+			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
+			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
+
+			if (!File.Exists(initCsPath) || !File.Exists(generatedInitCsPath)) return;
+
+			var initCs = File.ReadAllText(initCsPath);
+			var generatedInitCs = File.ReadAllText(generatedInitCsPath);
+			
+			var packageId = package.Id.Replace("nordeus.", "").Replace("unity.", "");
+			packageId = packageId.Substring(0, 1).ToUpper() + packageId.Substring(1);
+			
+			var initMethodName = "Init" + packageId;
+			// If init code for this package doesn't exists finish
+			if (!generatedInitCs.Contains("\t" + initMethodName + "()")) return;
+
+			// We guarantee Windows line breaks
+			var newLinesRegex = new Regex(@"\r\n?|\n");
+
+			initCs = newLinesRegex.Replace(initCs, "\r\n");
+			generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
+
+			generatedInitCs = generatedInitCs.Replace("\t\t" + initMethodName + "();\r\n", "");
+			var startIndex = initCs.IndexOf("\r\n\t\tprivate static void " + initMethodName + "()\r\n", StringComparison.Ordinal);
+			if (startIndex < 0) return;
+			var endIndex = initCs.IndexOf("\r\n\t\t}", startIndex, StringComparison.Ordinal);
+			if (endIndex < 0) return;
+
+			initCs = initCs.Remove(startIndex, endIndex - startIndex + "\r\n\t\t}\r\n".Length);
+
+			File.WriteAllText(initCsPath, initCs);
+			File.WriteAllText(generatedInitCsPath, generatedInitCs);
 		}
 
 		/// <summary>
@@ -1319,7 +1396,7 @@ namespace NugetForUnity
 			var newLinesRegex = new Regex(@"\r\n?|\n");
 
 			initCs = newLinesRegex.Replace(initCs, "\r\n");
-			generatedInitCsPath = newLinesRegex.Replace(generatedInitCsPath, "\r\n");
+			generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
 			
 			var initTemplate = File.ReadAllLines(initTemplatePath);
 
