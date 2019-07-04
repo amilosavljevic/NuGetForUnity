@@ -798,11 +798,11 @@ namespace NugetForUnity
 				using (new EditorGUILayout.HorizontalScope())
 				{
 					const int iconSize = 32;
-					var padding = EditorStyles.label.padding.vertical;
+					var padding = 5;
 					var rect = GUILayoutUtility.GetRect(iconSize, iconSize);
 					// only use GetRect's Y position.  It doesn't correctly set the width, height or X position.
 					rect.x = padding;
-					rect.y += padding;
+					rect.y += 3;
 					rect.width = iconSize;
 					rect.height = iconSize;
 
@@ -815,8 +815,8 @@ namespace NugetForUnity
 						GUI.DrawTexture(rect, defaultIcon, ScaleMode.StretchToFill);
 					}
 
-					rect = GUILayoutUtility.GetRect(position.width / 2 - (iconSize + leftPadding), 20);
-					rect.x = iconSize + leftPadding;
+					rect = GUILayoutUtility.GetRect(position.width / 2 - (iconSize + padding), 20);
+					rect.x = iconSize + padding;
 					rect.y += 10;
 
 					EditorStyles.label.fontStyle = FontStyle.Bold;
