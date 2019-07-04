@@ -20,6 +20,11 @@ namespace NugetForUnity
 		public string Description;
 
 		/// <summary>
+		/// Gets or sets the summary of the NuGet package.
+		/// </summary>
+		public string Summary;
+
+		/// <summary>
 		/// Gets or sets the release notes of the NuGet package.
 		/// </summary>
 		public string ReleaseNotes;
@@ -33,6 +38,16 @@ namespace NugetForUnity
 		/// Gets or sets the URL for the location of the actual (.nupkg) NuGet package.
 		/// </summary>
 		public string DownloadUrl;
+
+		/// <summary>
+		/// Gets or sets the DownloadCount.
+		/// </summary>
+		public int DownloadCount;
+
+		/// <summary>
+		/// Gets or sets the authors of the package.
+		/// </summary>
+		public string Authors;
 
 		/// <summary>
 		/// Gets or sets the <see cref="NugetPackageSource"/> that contains this package.
@@ -99,10 +114,11 @@ namespace NugetForUnity
 				Description = nuspec.Description,
 				ReleaseNotes = nuspec.ReleaseNotes,
 				LicenseUrl = nuspec.LicenseUrl,
-				ProjectUrl = nuspec.ProjectUrl
+				ProjectUrl = nuspec.ProjectUrl,
+				Authors = nuspec.Authors,
+				Summary = nuspec.Summary
 			};
 
-			//package.DownloadUrl = not in a nuspec
 
 			if (!string.IsNullOrEmpty(nuspec.IconUrl))
 			{

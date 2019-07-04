@@ -798,11 +798,11 @@ namespace NugetForUnity
 				using (new EditorGUILayout.HorizontalScope())
 				{
 					const int iconSize = 32;
-					const int leftPadding = 5;
+					var padding = EditorStyles.label.padding.vertical;
 					var rect = GUILayoutUtility.GetRect(iconSize, iconSize);
-					// only use GetRect's Y position.  It doesn't correctly set the width or X position.
-					rect.x = leftPadding;
-					rect.y += 3;
+					// only use GetRect's Y position.  It doesn't correctly set the width, height or X position.
+					rect.x = padding;
+					rect.y += padding;
 					rect.width = iconSize;
 					rect.height = iconSize;
 
@@ -821,7 +821,6 @@ namespace NugetForUnity
 
 					EditorStyles.label.fontStyle = FontStyle.Bold;
 					EditorStyles.label.fontSize = 14;
-					////EditorGUILayout.LabelField(string.Format("{1} [{0}]", package.Version, package.Id), GUILayout.Height(20), GUILayout.Width(position.width / 2 - 32));
 					GUI.Label(rect, string.Format("{1} [{0}]", package.Version, package.Title), EditorStyles.label);
 					EditorStyles.label.fontSize = 10;
 					EditorStyles.label.fontStyle = FontStyle.Normal;

@@ -84,6 +84,11 @@ namespace NugetForUnity
 		private static readonly Dictionary<string, NugetPackage> installedPackages = new Dictionary<string, NugetPackage>();
 
 		/// <summary>
+		/// The dictionary of cached credentials retrieved by credential providers, keyed by feed URI.
+		/// </summary>
+		private static readonly Dictionary<Uri, CredentialProviderResponse?> cachedCredentialsByFeedUri = new Dictionary<Uri, CredentialProviderResponse?>();
+
+		/// <summary>
 		/// The current .NET version being used (2.0 [actually 3.5], 4.6, etc).
 		/// </summary>
 		internal static int DotNetVersion;
@@ -331,7 +336,7 @@ namespace NugetForUnity
 				var intDotNetVersion = DotNetVersion; // c
 				//bool using46 = DotNetVersion == ApiCompatibilityLevel.NET_4_6; // NET_4_6 option was added in Unity 5.6
 				var using46 = intDotNetVersion == 3; // NET_4_6 = 3 in Unity 5.6 and Unity 2017.1 - use the hard-coded int value to ensure it works in earlier versions of Unity
-				var usingStandard2 = intDotNetVersion == 6; // using .net standard 2.0                
+				var usingStandard2 = intDotNetVersion == 6; // using .net standard 2.0
 
 				var selectedDirectories = new List<string>();
 
@@ -824,10 +829,10 @@ namespace NugetForUnity
 
 			var initCs = File.ReadAllText(initCsPath);
 			var generatedInitCs = File.ReadAllText(generatedInitCsPath);
-			
+
 			var packageId = package.Id.Replace("nordeus.", "").Replace("unity.", "");
 			packageId = packageId.Substring(0, 1).ToUpper() + packageId.Substring(1);
-			
+
 			var initMethodName = "Init" + packageId;
 			// If init code for this package doesn't exists finish
 			if (!generatedInitCs.Contains("\t" + initMethodName + "()")) return;
@@ -984,19 +989,16 @@ namespace NugetForUnity
 		/// <param name="packagesToUpdate">The list of currently installed packages.</param>
 		/// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
 		/// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
-		/// <param name="targetFrameworks">The specific frameworks to target?</param>
-		/// <param name="versionContraints">The version constraints?</param>
 		/// <returns>A list of all updates available.</returns>
 		public static List<NugetPackage> GetUpdates(ICollection<NugetPackage> packagesToUpdate, bool includePrerelease = false,
-													bool includeAllVersions = false, string targetFrameworks = "",
-													string versionContraints = "")
+													bool includeAllVersions = false)
 		{
 			var packages = new List<NugetPackage>();
 
 			// Loop through all active sources and combine them into a single list
 			foreach (var source in packageSources.Where(s => s.IsEnabled))
 			{
-				var newPackages = source.GetUpdates(packagesToUpdate, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
+				var newPackages = source.GetUpdates(packagesToUpdate, includePrerelease, includeAllVersions);
 				packages.AddRange(newPackages);
 				packages = packages.Distinct().ToList();
 			}
@@ -1196,7 +1198,7 @@ namespace NugetForUnity
 								installedPackage.Version, package.Version, package.Version);
 					return Update(installedPackage, package, false);
 				}
-				else if (installedPackage > package)
+				if (installedPackage > package)
 				{
 					LogVerbose("{0} {1} is installed. {2} or greater is needed, so using installed version.", installedPackage.Id,
 								installedPackage.Version, package.Version);
@@ -1256,8 +1258,8 @@ namespace NugetForUnity
 
 						// remove all handlers
 						//if (ServicePointManager.ServerCertificateValidationCallback != null)
-						//    foreach (var d in ServicePointManager.ServerCertificateValidationCallback.GetInvocationList())
-						//        ServicePointManager.ServerCertificateValidationCallback -= (d as System.Net.Security.RemoteCertificateValidationCallback);
+						//	foreach (var d in ServicePointManager.ServerCertificateValidationCallback.GetInvocationList())
+						//		ServicePointManager.ServerCertificateValidationCallback -= (d as System.Net.Security.RemoteCertificateValidationCallback);
 						ServicePointManager.ServerCertificateValidationCallback = null;
 
 						// add anonymous handler
@@ -1268,8 +1270,7 @@ namespace NugetForUnity
 						if (refreshAssets)
 							SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Downloading Package", 0.3f);
 
-						var objStream = RequestUrl(package.DownloadUrl, package.PackageSource.UserName,
-													package.PackageSource.ExpandedPassword, timeOut: null);
+						var objStream = RequestUrl(package.DownloadUrl, package.PackageSource.UserName, package.PackageSource.ExpandedPassword, timeOut: null);
 						using (Stream file = File.Create(cachedPackagePath))
 						{
 							CopyStream(objStream, file);
@@ -1384,10 +1385,10 @@ namespace NugetForUnity
 			var generatedInitCs = LoadInitClassFile(generatedInitCsPath, "AppInitializer.Generated.cs");
 
 			if (initCs == null || generatedInitCs == null) return;
-			
+
 			var packageId = package.Id.Replace("nordeus.", "").Replace("unity.", "");
 			packageId = packageId.Substring(0, 1).ToUpper() + packageId.Substring(1);
-			
+
 			var initMethodName = "Init" + packageId;
 			// If init code for this package already exists skip injection
 			if (generatedInitCs.Contains("\t" + initMethodName + "()")) return;
@@ -1397,7 +1398,7 @@ namespace NugetForUnity
 
 			initCs = newLinesRegex.Replace(initCs, "\r\n");
 			generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
-			
+
 			var initTemplate = File.ReadAllLines(initTemplatePath);
 
 			// Init template file should be written like this:
@@ -1475,7 +1476,7 @@ namespace NugetForUnity
 			}
 
 			var insertPos = 0;
-			
+
 			if (initSceneCodeFound)
 			{
 				insertPos = generatedInitCs.LastIndexOf("\t\t}", StringComparison.Ordinal);
@@ -1509,7 +1510,7 @@ namespace NugetForUnity
 			initCode = "\r\n\t\tprivate static void " + initMethodName + "()\r\n" + initCode;
 			insertPos = initCs.LastIndexOf("\t}", StringComparison.Ordinal);
 			initCs = initCs.Substring(0, insertPos) + initCode + initCs.Substring(insertPos);
-			
+
 			// Make sure the dir exists
 			Directory.CreateDirectory(initCsDir);
 
@@ -1569,7 +1570,7 @@ namespace NugetForUnity
 
 			if (string.IsNullOrEmpty(password))
 			{
-				var creds = GetCredentialFromProvider(getRequest.RequestUri, true);
+				var creds = GetCredentialFromProvider(GetTruncatedFeedUri(getRequest.RequestUri));
 				if (creds.HasValue)
 				{
 					userName = creds.Value.Username;
@@ -1775,110 +1776,149 @@ namespace NugetForUnity
 		/// See here for more info on nuget Credential Providers:
 		/// https://docs.microsoft.com/en-us/nuget/reference/extensibility/nuget-exe-credential-providers
 		/// </summary>
+		/// <param name="feedUri">The hostname where the VSTS instance is hosted (such as microsoft.pkgs.visualsudio.com.</param>
 		/// <returns>The password in the form of a token, or null if the password could not be aquired</returns>
-		private static CredentialProviderResponse? GetCredentialFromProvider(Uri feedUri, bool downloadIfMissing)
+		private static CredentialProviderResponse? GetCredentialFromProvider(Uri feedUri)
 		{
-			while (true)
+			if (!cachedCredentialsByFeedUri.TryGetValue(feedUri, out var response))
 			{
-				// Build the list of possible locations to find the credential provider. In order it should be local app data, paths set on the
-				// environment varaible, and lastly look at the root of the pacakges save location.
-				var possibleCredentialProviderPaths = new List<string>
+				response = GetCredentialFromProvider_Uncached(feedUri, true);
+				cachedCredentialsByFeedUri[feedUri] = response;
+			}
+			return response;
+		}
+
+		/// <summary>
+		/// Given the URI of a nuget method, returns the URI of the feed itself without the method and query parameters.
+		/// </summary>
+		/// <param name="methodUri">URI of nuget method.</param>
+		/// <returns>URI of the feed without the method and query parameters.</returns>
+		private static Uri GetTruncatedFeedUri(Uri methodUri)
+		{
+			string truncatedUriString = methodUri.GetLeftPart(UriPartial.Path);
+			int lastSeparatorIndex = truncatedUriString.LastIndexOf('/');
+			if (lastSeparatorIndex != -1)
+			{
+				truncatedUriString = truncatedUriString.Substring(0, lastSeparatorIndex);
+			}
+
+			Uri truncatedUri = new Uri(truncatedUriString);
+			return truncatedUri;
+		}
+
+		/// <summary>
+		/// Clears static credentials previously cached by GetCredentialFromProvider.
+		/// </summary>
+		public static void ClearCachedCredentials()
+		{
+			cachedCredentialsByFeedUri.Clear();
+		}
+
+		/// <summary>
+		/// Internal function called by GetCredentialFromProvider to implement retrieving credentials. For performance reasons,
+		/// most functions should call GetCredentialFromProvider in order to take advantage of cached credentials.
+		/// </summary>
+		private static CredentialProviderResponse? GetCredentialFromProvider_Uncached(Uri feedUri, bool downloadIfMissing)
+		{
+			LogVerbose("Getting credential for {0}", feedUri);
+
+			// Build the list of possible locations to find the credential provider. In order it should be local app data, paths set on the
+			// environment varaible, and lastly look at the root of the pacakges save location.
+			var possibleCredentialProviderPaths = new List<string>
+			{
+				Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nuget"), "CredentialProviders")
+			};
+
+			var environmentCredentialProviderPaths = Environment.GetEnvironmentVariable("NUGET_CREDENTIALPROVIDERS_PATH");
+			if (!string.IsNullOrEmpty(environmentCredentialProviderPaths))
+			{
+				possibleCredentialProviderPaths.AddRange(environmentCredentialProviderPaths.Split(new[] {";"}, StringSplitOptions.RemoveEmptyEntries));
+			}
+
+			// Try to find any nuget.exe in the package tools installation location
+			var toolsPackagesFolder = Path.Combine(SystemProxy.CurrentDir, "../Packages");
+			possibleCredentialProviderPaths.Add(toolsPackagesFolder);
+
+			// Search through all possible paths to find the credential provider.
+			var providerPaths = new List<string>();
+			foreach (var possiblePath in possibleCredentialProviderPaths)
+			{
+				if (Directory.Exists(possiblePath))
 				{
-					Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nuget"), "CredentialProviders")
+					providerPaths.AddRange(Directory.GetFiles(possiblePath, "credentialprovider*.exe", SearchOption.AllDirectories));
+				}
+			}
+
+			foreach (var providerPath in providerPaths.Distinct())
+			{
+				// Launch the credential provider executable and get the json encoded response from the std output
+				var process = new Process
+				{
+					StartInfo =
+					{
+						UseShellExecute = false,
+						CreateNoWindow = true,
+						RedirectStandardOutput = true,
+						RedirectStandardError = true,
+						FileName = providerPath,
+						Arguments = $"-uri \"{feedUri}\"",
+						StandardOutputEncoding = Encoding.GetEncoding(850)
+					}
 				};
 
-				var environmentCredentialProviderPaths = Environment.GetEnvironmentVariable("NUGET_CREDENTIALPROVIDERS_PATH");
-				if (!string.IsNullOrEmpty(environmentCredentialProviderPaths))
-				{
-					possibleCredentialProviderPaths.AddRange(environmentCredentialProviderPaths.Split(new[] {";"}, StringSplitOptions.RemoveEmptyEntries));
-				}
+				// http://stackoverflow.com/questions/16803748/how-to-decode-cmd-output-correctly
+				// Default = 65533, ASCII = ?, Unicode = nothing works at all, UTF-8 = 65533, UTF-7 = 242 = WORKS!, UTF-32 = nothing works at all
+				process.Start();
+				process.WaitForExit();
 
-				// Try to find any nuget.exe in the package tools installation location
-				var toolsPackagesFolder = Path.Combine(SystemProxy.CurrentDir, "../Packages");
-				possibleCredentialProviderPaths.Add(toolsPackagesFolder);
+				var output = process.StandardOutput.ReadToEnd();
+				var errors = process.StandardError.ReadToEnd();
 
-				// Search through all possible paths to find the credential provider.
-				var providerPaths = new List<string>();
-				foreach (var possiblePath in possibleCredentialProviderPaths)
+				switch ((CredentialProviderExitCode)process.ExitCode)
 				{
-					if (Directory.Exists(possiblePath))
+					case CredentialProviderExitCode.ProviderNotApplicable:
+						break; // Not the right provider
+					case CredentialProviderExitCode.Failure: // Right provider, failure to get creds
 					{
-						providerPaths.AddRange(Directory.GetFiles(possiblePath, "credentialprovider*.exe", SearchOption.AllDirectories));
+						SystemProxy.LogError($"Failed to get credentials from {providerPath}!\n\tOutput\n\t{output}\n\tErrors\n\t{errors}");
+						return null;
 					}
-				}
-
-				foreach (var providerPath in providerPaths.Distinct())
-				{
-					// Launch the credential provider executable and get the json encoded response from the std output
-					var process = new Process
+					case CredentialProviderExitCode.Success:
 					{
-						StartInfo =
+						output = output.Trim('{', '}', ' ', '\t', '\r', '\n');
+						var lines = output.Split(',');
+						var result = new CredentialProviderResponse();
+						foreach (var line in lines)
 						{
-							UseShellExecute = false,
-							CreateNoWindow = true,
-							RedirectStandardOutput = true,
-							RedirectStandardError = true,
-							FileName = providerPath,
-							Arguments = $"-uri \"{feedUri}\"",
-							StandardOutputEncoding = Encoding.GetEncoding(850)
-						}
-					};
-
-					// http://stackoverflow.com/questions/16803748/how-to-decode-cmd-output-correctly
-					// Default = 65533, ASCII = ?, Unicode = nothing works at all, UTF-8 = 65533, UTF-7 = 242 = WORKS!, UTF-32 = nothing works at all
-					process.Start();
-					process.WaitForExit();
-
-					var output = process.StandardOutput.ReadToEnd();
-					var errors = process.StandardError.ReadToEnd();
-
-					switch ((CredentialProviderExitCode)process.ExitCode)
-					{
-						case CredentialProviderExitCode.ProviderNotApplicable:
-							break; // Not the right provider
-						case CredentialProviderExitCode.Failure: // Right provider, failure to get creds
-						{
-							SystemProxy.LogError($"Failed to get credentials from {providerPath}!\n\tOutput\n\t{output}\n\tErrors\n\t{errors}");
-							return null;
-						}
-						case CredentialProviderExitCode.Success:
-						{
-							output = output.Trim('{', '}', ' ', '\t', '\r', '\n');
-							var lines = output.Split(',');
-							var result = new CredentialProviderResponse();
-							foreach (var line in lines)
+							var keyVal = line.Split(':');
+							if (keyVal.Length != 2) continue;
+							if (keyVal[0].Contains(nameof(CredentialProviderResponse.Username)))
 							{
-								var keyVal = line.Split(':');
-								if (keyVal.Length != 2) continue;
-								if (keyVal[0].Contains(nameof(CredentialProviderResponse.Username)))
-								{
-									result.Username = keyVal[1].Trim(' ', '\t', '"');
-								}
-								else if (keyVal[0].Contains(nameof(CredentialProviderResponse.Password)))
-								{
-									result.Password = keyVal[1].Trim(' ', '\t', '"');
-								}
+								result.Username = keyVal[1].Trim(' ', '\t', '"');
 							}
+							else if (keyVal[0].Contains(nameof(CredentialProviderResponse.Password)))
+							{
+								result.Password = keyVal[1].Trim(' ', '\t', '"');
+							}
+						}
 
-							return result;
-						}
-						default:
-						{
-							SystemProxy.LogWarning($"Unrecognized exit code {process.ExitCode} from {providerPath} {process.StartInfo.Arguments}");
-							break;
-						}
+						return result;
+					}
+					default:
+					{
+						SystemProxy.LogWarning($"Unrecognized exit code {process.ExitCode} from {providerPath} {process.StartInfo.Arguments}");
+						break;
 					}
 				}
-
-				if (downloadIfMissing)
-				{
-					DownloadCredentialProviders(feedUri);
-					downloadIfMissing = false;
-					continue;
-				}
-
-				return null;
 			}
+
+			if (downloadIfMissing)
+			{
+				DownloadCredentialProviders(feedUri);
+				return GetCredentialFromProvider_Uncached(feedUri, false);
+			}
+
+			return null;
 		}
 	}
 }

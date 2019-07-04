@@ -329,15 +329,18 @@ namespace NugetForUnity
 
 			// add anonymous handler
 			ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, policyErrors) => true;
-
-			var responseStream = NugetHelper.RequestUrl(url, username, password, timeOut: 5000);
-			var streamReader = new StreamReader(responseStream);
-
-			var packages = NugetODataResponse.Parse(XDocument.Load(streamReader));
-
-			foreach (var package in packages)
+			
+			List<NugetPackage> packages;
+			using (var responseStream = NugetHelper.RequestUrl(url, username, password, timeOut: 5000))
 			{
-				package.PackageSource = this;
+				using (var streamReader = new StreamReader(responseStream))
+				{
+					packages = NugetODataResponse.Parse(XDocument.Load(streamReader));
+					foreach (var package in packages)
+					{
+						package.PackageSource = this;
+					}
+				}
 			}
 
 			stopwatch.Stop();
@@ -381,10 +384,8 @@ namespace NugetForUnity
 		/// <param name="installedPackages">The list of currently installed packages.</param>
 		/// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
 		/// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
-		/// <param name="targetFrameworks">The specific frameworks to target?</param>
-		/// <param name="versionContraints">The version constraints?</param>
 		/// <returns>A list of all updates available.</returns>
-		public List<NugetPackage> GetUpdates(ICollection<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionContraints = "")
+		public List<NugetPackage> GetUpdates(ICollection<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false)
 		{
 			if (IsLocalPath)
 			{
@@ -422,8 +423,7 @@ namespace NugetForUnity
 					}
 				}
 
-				var url =
-					$"{ExpandedPath}GetUpdates()?packageIds='{packageIds}'&versions='{versions}'&includePrerelease={includePrerelease.ToString().ToLower()}&includeAllVersions={includeAllVersions.ToString().ToLower()}&targetFrameworks='{targetFrameworks}'&versionConstraints='{versionContraints}'";
+				var url = $"{ExpandedPath}GetUpdates()?packageIds='{packageIds}'&versions='{versions}'&includePrerelease={includePrerelease.ToString().ToLower()}&includeAllVersions={includeAllVersions.ToString().ToLower()}";
 
 				try
 				{
@@ -437,7 +437,7 @@ namespace NugetForUnity
 					{
 						// Some web services, such as VSTS don't support the GetUpdates API. Attempt to retrieve updates via FindPackagesById.
 						NugetHelper.LogVerbose("{0} not found. Falling back to FindPackagesById.", url);
-						return GetUpdatesFallback(installedPackages, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
+						return GetUpdatesFallback(installedPackages, includePrerelease, includeAllVersions);
 					}
 
 					SystemProxy.LogError($"Unable to retrieve package list from {url}\n{e}");
@@ -447,6 +447,7 @@ namespace NugetForUnity
 			// sort alphabetically
 			updates.Sort(delegate (NugetPackage x, NugetPackage y)
 			{
+				// ReSharper disable once ConvertIfStatementToSwitchStatement
 				if (x.Id == null && y.Id == null) return 0;
 				if (x.Id == null) return -1;
 				if (y.Id == null) return 1;
@@ -506,12 +507,11 @@ namespace NugetForUnity
 		/// <param name="installedPackages">The list of currently installed packages.</param>
 		/// <param name="includePrerelease">True to include prerelease packages (alpha, beta, etc).</param>
 		/// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
-		/// <param name="targetFrameworks">The specific frameworks to target?</param>
-		/// <param name="versionContraints">The version constraints?</param>
 		/// <returns>A list of all updates available.</returns>
-		private List<NugetPackage> GetUpdatesFallback(IEnumerable<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false, string targetFrameworks = "", string versionContraints = "")
+		private List<NugetPackage> GetUpdatesFallback(IEnumerable<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false)
 		{
-			Debug.Assert(string.IsNullOrEmpty(targetFrameworks) && string.IsNullOrEmpty(versionContraints)); // These features are not supported by this version of GetUpdates.
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
 
 			var updates = new List<NugetPackage>();
 			foreach (var installedPackage in installedPackages)
@@ -520,7 +520,7 @@ namespace NugetForUnity
 				var id = new NugetPackageIdentifier(installedPackage.Id, versionRange); 
 				var packageUpdates = FindPackagesById(id);
 
-				var mostRecentPrerelease = includePrerelease ? packageUpdates.FindLast(p => p.IsPrerelease) : default(NugetPackage);
+				var mostRecentPrerelease = includePrerelease ? packageUpdates.FindLast(p => p.IsPrerelease) : null;
 				packageUpdates.RemoveAll(p => p.IsPrerelease && p != mostRecentPrerelease);
 
 				if (!includeAllVersions && packageUpdates.Count > 0)
@@ -531,6 +531,7 @@ namespace NugetForUnity
 				updates.AddRange(packageUpdates);
 			}
 
+			NugetHelper.LogVerbose("NugetPackageSource.GetUpdatesFallback took {0} ms", stopwatch.ElapsedMilliseconds);
 			return updates;
 		}
 	}
