@@ -440,7 +440,7 @@ namespace NugetForUnity
 						return GetUpdatesFallback(installedPackages, includePrerelease, includeAllVersions, targetFrameworks, versionContraints);
 					}
 
-					SystemProxy.LogError("Unable to retrieve package list from {url}\n{e}");
+					SystemProxy.LogError($"Unable to retrieve package list from {url}\n{e}");
 				}
 			}
 

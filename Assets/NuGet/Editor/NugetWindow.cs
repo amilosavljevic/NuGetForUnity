@@ -883,6 +883,8 @@ namespace NugetForUnity
 				}
 			}
 
+			EditorGUILayout.Separator();
+
 			using (new EditorGUILayout.HorizontalScope())
 			{
 				using (new EditorGUILayout.VerticalScope())
@@ -892,21 +894,11 @@ namespace NugetForUnity
 					EditorStyles.label.fontStyle = FontStyle.Normal;
 					EditorGUILayout.LabelField($"{package.Description}");
 
-					// Show project URL link
-					if (!string.IsNullOrEmpty(package.ProjectUrl))
-					{
-						GUILayoutLink(package.ProjectUrl);
-						GUILayout.Space(4f);
-					}
-
 					// Show the package release notes
 					if (!string.IsNullOrEmpty(package.ReleaseNotes))
 					{
 						EditorStyles.label.wordWrap = true;
-						EditorStyles.label.fontStyle = FontStyle.Bold;
-						EditorGUILayout.LabelField("Release Notes:");
-						EditorStyles.label.fontStyle = FontStyle.Normal;
-						EditorGUILayout.LabelField($"{package.ReleaseNotes}");
+						EditorGUILayout.LabelField($"Release Notes: {package.ReleaseNotes}");
 					}
 
 					// Show the dependencies
@@ -919,7 +911,6 @@ namespace NugetForUnity
 						{
 							builder.Append($" {dependency.Id} {dependency.Version};");
 						}
-						EditorGUILayout.Space();
 						EditorGUILayout.LabelField($"Depends on:{builder}");
 						EditorStyles.label.fontStyle = FontStyle.Normal;
 					}
@@ -1036,15 +1027,19 @@ namespace NugetForUnity
 							}
 						}
 					}
-
-					EditorGUILayout.Separator();
+					
 					EditorGUILayout.Separator();
 				}
 
-				if (installed != null)
+				if (!string.IsNullOrEmpty(package.ProjectUrl))
+				{
+					if (installed != null) GUILayoutLink(package.ProjectUrl, $"currently [{installed.Version}]");
+					else GUILayoutLink(package.ProjectUrl, "Project home");
+				}
+				else if (installed != null)
 				{
 					var labelStyle = new GUIStyle(EditorStyles.label) {alignment = TextAnchor.UpperRight};
-					GUILayout.Label($"currently [{installed.Version}]  ", labelStyle, installButtonWidth);
+					GUILayout.Label($"currently [{installed.Version}]", labelStyle, installButtonWidth);
 				}
 			}
 		}
@@ -1235,21 +1230,23 @@ done< <(git diff --name-only --cached)
 			return EditorUtility.OpenFolderPanel(openFolderTitle, "", "");
 		}
 
-		public static void GUILayoutLink(string url)
+		public static void GUILayoutLink(string url, string text = null)
 		{
+			if (text == null) text = url;
 			var hyperLinkStyle = new GUIStyle(GUI.skin.label)
 			{
 				stretchWidth = false,
-				richText = true
+				richText = true,
+				alignment = TextAnchor.UpperRight
 			};
 
 			var colorFormatString = "<color=#add8e6ff>{0}</color>";
 
-			var underline = new string('_', url.Length);
+			var underline = new string('_', text.Length);
 
-			var formattedUrl = string.Format(colorFormatString, url);
+			var formattedUrl = string.Format(colorFormatString, text);
 			var formattedUnderline = string.Format(colorFormatString, underline);
-			var urlRect = GUILayoutUtility.GetRect(new GUIContent(url), hyperLinkStyle);
+			var urlRect = GUILayoutUtility.GetRect(new GUIContent(text), hyperLinkStyle);
 			GUI.Label(urlRect, formattedUrl, hyperLinkStyle);
 			GUI.Label(urlRect, formattedUnderline, hyperLinkStyle);
 

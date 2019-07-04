@@ -33,10 +33,7 @@ namespace NugetForUnity
 			// Nothing needs to be done in CLI
 		}
 
-		public static bool IsPlayingOrWillChangePlaymode()
-		{
-			return false;
-		}
+		public static bool IsPlayingOrWillChangePlaymode => false;
 
 		public static int GetApiCompatibilityLevel()
 		{
