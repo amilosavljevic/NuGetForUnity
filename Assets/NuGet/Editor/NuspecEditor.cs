@@ -64,6 +64,7 @@ namespace NugetForUnity
 			File.WriteAllText(Path.Combine(savePath, "Readme.md"), "#Package readme");
 			if (!savePath.StartsWith(Application.dataPath))
 			{
+				NugetWindow.InstallPreCommitHook();
 				filepath = Path.Combine(filepath, Path.GetFileName(savePath));
 				SymbolicLink.Create(filepath, savePath);
 				savePath = filepath;

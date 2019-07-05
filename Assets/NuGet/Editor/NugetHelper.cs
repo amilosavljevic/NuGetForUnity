@@ -819,42 +819,6 @@ namespace NugetForUnity
 				SystemProxy.RefreshAssets();
 		}
 
-		private static void DeleteInitMethods(NugetPackage package)
-		{
-			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
-			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
-			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
-
-			if (!File.Exists(initCsPath) || !File.Exists(generatedInitCsPath)) return;
-
-			var initCs = File.ReadAllText(initCsPath);
-			var generatedInitCs = File.ReadAllText(generatedInitCsPath);
-
-			var packageId = package.Id.Replace("nordeus.", "").Replace("unity.", "");
-			packageId = packageId.Substring(0, 1).ToUpper() + packageId.Substring(1);
-
-			var initMethodName = "Init" + packageId;
-			// If init code for this package doesn't exists finish
-			if (!generatedInitCs.Contains("\t" + initMethodName + "()")) return;
-
-			// We guarantee Windows line breaks
-			var newLinesRegex = new Regex(@"\r\n?|\n");
-
-			initCs = newLinesRegex.Replace(initCs, "\r\n");
-			generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
-
-			generatedInitCs = generatedInitCs.Replace("\t\t" + initMethodName + "();\r\n", "");
-			var startIndex = initCs.IndexOf("\r\n\t\tprivate static void " + initMethodName + "()\r\n", StringComparison.Ordinal);
-			if (startIndex < 0) return;
-			var endIndex = initCs.IndexOf("\r\n\t\t}", startIndex, StringComparison.Ordinal);
-			if (endIndex < 0) return;
-
-			initCs = initCs.Remove(startIndex, endIndex - startIndex + "\r\n\t\t}\r\n".Length);
-
-			File.WriteAllText(initCsPath, initCs);
-			File.WriteAllText(generatedInitCsPath, generatedInitCs);
-		}
-
 		/// <summary>
 		/// Updates a package by uninstalling the currently installed version and installing the "new" version.
 		/// </summary>

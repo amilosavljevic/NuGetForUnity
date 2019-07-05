@@ -1154,7 +1154,7 @@ namespace NugetForUnity
 			}
 		}
 
-		private static void InstallPreCommitHook()
+		public static void InstallPreCommitHook()
 		{
 			var gitFolder = Path.Combine(Directory.GetCurrentDirectory(), ".git/hooks");
 			if (!Directory.Exists(gitFolder))
