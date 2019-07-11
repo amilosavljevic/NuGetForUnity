@@ -28,6 +28,11 @@ namespace NugetForUnity
 		/// True if the dependencies list is expanded in the GUI.  False if it is collapsed.
 		/// </summary>
 		private bool dependenciesExpanded = true;
+		
+		/// <summary>
+		/// True if the Pack and push to server list is expanded in the GUI.  False if it is collapsed.
+		/// </summary>
+		private bool packingExpanded;
 
 		/// <summary>
 		/// The API key used to verify an acceptable package being pushed to the server.
@@ -236,13 +241,13 @@ namespace NugetForUnity
 				nuspec.Copyright = EditorGUILayout.TextField(new GUIContent("Copyright", "The copyright details for the package."), nuspec.Copyright);
 				nuspec.Tags = EditorGUILayout.TextField(new GUIContent("Tags", "The space-delimited list of tags and keywords that describe the package and aid discoverability of packages through search and filtering."), nuspec.Tags);
 
-				dependenciesExpanded = EditorGUILayout.Foldout(dependenciesExpanded, new GUIContent("Dependencies", "The list of NuGet packages that this packages depends on."));
-
-				if (dependenciesExpanded)
+				using (new EditorGUILayout.HorizontalScope())
 				{
-					EditorGUILayout.BeginHorizontal();
+					dependenciesExpanded = EditorGUILayout.Foldout(dependenciesExpanded, new GUIContent("Dependencies", "The list of NuGet packages that this packages depends on."));
+
+					if (dependenciesExpanded)
 					{
-						GUILayout.Space(50);
+						GUILayout.FlexibleSpace();
 
 						// automatically fill in the dependencies based upon the "root" packages currently installed in the project
 						if (GUILayout.Button(new GUIContent("Automatically Fill Dependencies", "Populates the list of dependencies with the \"root\" NuGet packages currently installed in the project.")))
@@ -252,10 +257,12 @@ namespace NugetForUnity
 
 							// default all packages to being roots
 							var roots = new List<NugetPackage>(installedPackages);
+							roots.RemoveAll(p => p.Id == nuspec.Id);
 
 							// remove a package as a root if another package is dependent on it
 							foreach (var package in installedPackages)
 							{
+								if (package.Id == nuspec.Id) continue;
 								foreach (var dependency in package.Dependencies)
 								{
 									roots.RemoveAll(p => p.Id == dependency.Id);
@@ -268,45 +275,30 @@ namespace NugetForUnity
 							nuspec.Dependencies = roots.Cast<NugetPackageIdentifier>().ToList();
 						}
 					}
-					EditorGUILayout.EndHorizontal();
+				}
 
+				if (dependenciesExpanded)
+				{
+					EditorGUILayout.Space();
 					// display the dependencies
 					NugetPackageIdentifier toDelete = null;
 					foreach (var dependency in nuspec.Dependencies)
 					{
 						EditorGUILayout.BeginHorizontal();
-						GUILayout.Space(75);
-						var prevLabelWidth = EditorGUIUtility.labelWidth;
-						EditorGUIUtility.labelWidth = 50;
-						dependency.Id = EditorGUILayout.TextField(new GUIContent("ID", "The ID of the dependency package."), dependency.Id);
-						EditorGUILayout.EndHorizontal();
+						GUILayout.Space(25);
+						GUILayout.Label("ID", GUILayout.Width(25), GUILayout.Height(20));
+						dependency.Id = GUILayout.TextField(dependency.Id, GUILayout.Height(20));
+						GUILayout.Label("Version ", GUILayout.Width(50), GUILayout.Height(20));
+						dependency.Version = GUILayout.TextField(dependency.Version, GUILayout.Width(150), GUILayout.Height(20));
+						GUILayout.Space(5);
 
-						//int oldSeletedIndex = IndexOf(ref existingComponents, dependency.Id);
-						//int newSelectIndex = EditorGUILayout.Popup("Name", oldSeletedIndex, existingComponents);
-						//if (oldSeletedIndex != newSelectIndex)
-						//{
-						//    dependency.Name = existingComponents[newSelectIndex];
-						//}
-
-						EditorGUILayout.BeginHorizontal();
-						GUILayout.Space(75);
-						dependency.Version = EditorGUILayout.TextField(new GUIContent("Version", "The version number of the dependency package. (specify ranges with =><)"), dependency.Version);
-						EditorGUILayout.EndHorizontal();
-
-						EditorGUILayout.BeginHorizontal();
+						if (GUILayout.Button("X", GUILayout.Width(20)))
 						{
-							GUILayout.Space(75);
-
-							if (GUILayout.Button("Remove " + dependency.Id))
-							{
-								toDelete = dependency;
-							}
+							toDelete = dependency;
 						}
 						EditorGUILayout.EndHorizontal();
 
 						EditorGUILayout.Separator();
-
-						EditorGUIUtility.labelWidth = prevLabelWidth;
 					}
 
 					if (toDelete != null)
@@ -316,7 +308,7 @@ namespace NugetForUnity
 
 					EditorGUILayout.BeginHorizontal();
 					{
-						GUILayout.Space(50);
+						GUILayout.Space(25);
 
 						if (GUILayout.Button("Add Dependency"))
 						{
@@ -326,28 +318,44 @@ namespace NugetForUnity
 					EditorGUILayout.EndHorizontal();
 				}
 
-				EditorGUILayout.Separator();
+				GUILayout.Space(10);
+				
+				packingExpanded = EditorGUILayout.Foldout(packingExpanded, new GUIContent("Pack and Push to Server"));
 
-				if (GUILayout.Button($"Save {Path.GetFileName(filepath)}"))
+				if (packingExpanded)
 				{
-					nuspec.Save(filepath);
+					if (GUILayout.Button($"Pack {Path.GetFileNameWithoutExtension(filepath)}.nupkg"))
+					{
+						NugetHelper.Pack(filepath);
+					}
+
+					EditorGUILayout.Separator();
+
+					apiKey =
+						EditorGUILayout.TextField(new GUIContent("API Key", "The API key to use when pushing the package to the server"),
+												apiKey);
+
+					if (GUILayout.Button("Push to Server"))
+					{
+						NugetHelper.Push(nuspec, filepath, apiKey);
+					}
 				}
 
-				EditorGUILayout.Separator();
+				GUILayout.FlexibleSpace();
 
-				if (GUILayout.Button($"Pack {Path.GetFileNameWithoutExtension(filepath)}.nupkg"))
+				using (new EditorGUILayout.HorizontalScope())
 				{
-					NugetHelper.Pack(filepath);
+					GUILayout.FlexibleSpace();
+					var style = new GUIStyle(GUI.skin.button) {normal = {textColor = Color.green}};
+
+					if (GUILayout.Button($"Save {Path.GetFileName(filepath)}", style, GUILayout.Width(400), GUILayout.Height(50)))
+					{
+						nuspec.Save(filepath);
+					}
+					GUILayout.FlexibleSpace();
 				}
 
-				EditorGUILayout.Separator();
-
-				apiKey = EditorGUILayout.TextField(new GUIContent("API Key", "The API key to use when pushing the package to the server"), apiKey);
-
-				if (GUILayout.Button("Push to Server"))
-				{
-					NugetHelper.Push(nuspec, filepath, apiKey);
-				}
+				GUILayout.Space(20);
 			}
 		}
 	}

@@ -16,6 +16,16 @@
 /*.pidb
 /*.booproj
 
+**/.idea/**/workspace.xml
+**/.idea/**/tasks.xml
+**/.idea/**/usage.statistics.xml
+**/.idea/**/modules.xml
+**/.idea/**/contentModel.xml
+**/.idea/**/dictionaries
+**/.idea/**/shelf
+**/.idea/**/*.iml
+**/.idea/**/codeStyles
+
 #Unity3D Generated File On Crash Reports
 sysinfo.txt
 
