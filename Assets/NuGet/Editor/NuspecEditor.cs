@@ -2,7 +2,7 @@
 using Nordeus.Nuget.Utility;
 
 namespace NugetForUnity
-{
+{	
 	using System.Collections.Generic;
 	using System.IO;
 	using System.Linq;
@@ -197,15 +197,14 @@ namespace NugetForUnity
 
 				var isNuspec = Path.GetExtension(assetFilepath) == ".nuspec";
 
-				if (isNuspec)
-				{
-					filepath = assetFilepath;
-					nuspec = NuspecFile.Load(filepath);
-					titleContent = new GUIContent(Path.GetFileNameWithoutExtension(filepath));
+				if (!isNuspec || nuspec != null && filepath == assetFilepath) return;
+				
+				filepath = assetFilepath;
+				nuspec = NuspecFile.Load(filepath);
+				titleContent = new GUIContent(Path.GetFileNameWithoutExtension(filepath));
 
-					// force a repaint
-					Repaint();
-				}
+				// force a repaint
+				Repaint();
 			}
 		}
 
@@ -223,8 +222,9 @@ namespace NugetForUnity
 			{
 				titleContent = new GUIContent("[NO NUSPEC]");
 				EditorGUILayout.LabelField("There is no .nuspec file selected.");
+				return;
 			}
-			else
+			
 			{
 				EditorGUIUtility.labelWidth = 100;
 				nuspec.Id = EditorGUILayout.TextField(new GUIContent("ID", "The id of the package."), nuspec.Id);
