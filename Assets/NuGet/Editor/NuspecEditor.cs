@@ -1,19 +1,36 @@
-﻿using JetBrains.Annotations;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+using JetBrains.Annotations;
 using Nordeus.Nuget.Utility;
 
 namespace NugetForUnity
 {	
-	using System.Collections.Generic;
-	using System.IO;
-	using System.Linq;
-	using UnityEditor;
-	using UnityEngine;
-
 	/// <summary>
 	/// Represents a custom editor inside the Unity editor that allows easy editting of a .nuspec file.
 	/// </summary>
 	public class NuspecEditor : EditorWindow
 	{
+		/// <summary>
+		/// If you want to provide your own Nuspec defaults in your project set this from a method with
+		/// a InitializeOnLoadMethod Unity attribute.
+		/// </summary>
+		public static NuspecFile DefaultFile = new NuspecFile
+		{
+			Id = "company_name.{0}",
+			Version = "0.0.1",
+			Authors = "Your Name",
+			Owners = "Your Name",
+			LicenseUrl = "http://your_license_url_here",
+			ProjectUrl = "http://your_project_url_here",
+			Description = "A description of what this packages is and does.",
+			ReleaseNotes = "Notes for this specific release",
+			Copyright = "Copyright 2017",
+			IconUrl = "https://www.nuget.org/Content/Images/packageDefaultIcon-50x50.png"
+		};
+		
 		/// <summary>
 		/// The full filepath to the .nuspec file that is being edited.
 		/// </summary>
@@ -92,17 +109,17 @@ namespace NugetForUnity
 
 			var file = new NuspecFile
 			{
-				Id = "company_name." + packageName.ToLower(),
+				Id = string.Format(DefaultFile.Id, packageName.ToLower()),
 				Title = packageName,
-				Version = "0.0.1",
-				Authors = "Your Name",
-				Owners = "Your Name",
-				LicenseUrl = "http://your_license_url_here",
-				ProjectUrl = "http://your_project_url_here",
-				Description = "A description of what this packages is and does.",
-				ReleaseNotes = "Notes for this specific release",
-				Copyright = "Copyright 2017",
-				IconUrl = "https://www.nuget.org/Content/Images/packageDefaultIcon-50x50.png"
+				Version = DefaultFile.Version,
+				Authors = DefaultFile.Authors,
+				Owners = DefaultFile.Owners,
+				LicenseUrl = DefaultFile.LicenseUrl,
+				ProjectUrl = string.Format(DefaultFile.ProjectUrl, packageName),
+				Description = DefaultFile.Description,
+				ReleaseNotes = DefaultFile.ReleaseNotes,
+				Copyright = DefaultFile.Copyright,
+				IconUrl = DefaultFile.IconUrl
 			};
 			file.Save(filepath);
 
