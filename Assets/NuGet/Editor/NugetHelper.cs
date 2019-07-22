@@ -1323,6 +1323,13 @@ namespace NugetForUnity
 
 		private static void ProcessInitTemplate(string initTemplatePath, NugetPackage package)
 		{
+			string PackageIdToMethodName(string pkgId)
+			{
+				pkgId = pkgId.Replace("nordeus.", "").Replace("unity.", "");
+				pkgId = pkgId.Substring(0, 1).ToUpper() + pkgId.Substring(1);
+				return "Init" + pkgId;
+			}
+
 			string LoadInitClassFile(string path, string name)
 			{
 				if (File.Exists(path)) return File.ReadAllText(path);
@@ -1350,10 +1357,7 @@ namespace NugetForUnity
 
 			if (initCs == null || generatedInitCs == null) return;
 
-			var packageId = package.Id.Replace("nordeus.", "").Replace("unity.", "");
-			packageId = packageId.Substring(0, 1).ToUpper() + packageId.Substring(1);
-
-			var initMethodName = "Init" + packageId;
+			var initMethodName = PackageIdToMethodName(package.Id);
 			// If init code for this package already exists skip injection
 			if (generatedInitCs.Contains("\t" + initMethodName + "()")) return;
 
@@ -1449,7 +1453,7 @@ namespace NugetForUnity
 			{
 				foreach (var dependency in dependencies)
 				{
-					var depMethod = "Init" + dependency.Substring(0, 1).ToUpper() + dependency.Substring(1);
+					var depMethod = PackageIdToMethodName(dependency);
 					var depIndex = generatedInitCs.IndexOf(depMethod, StringComparison.Ordinal);
 					if (depIndex < 0) continue;
 					var newInsertPos = generatedInitCs.IndexOf("\r\n", depIndex, StringComparison.Ordinal) + 2;
