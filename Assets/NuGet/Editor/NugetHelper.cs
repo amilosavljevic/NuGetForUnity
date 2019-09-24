@@ -726,7 +726,11 @@ namespace NugetForUnity
 			string LoadInitClassFile(string name)
 			{
 				var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
-				if (stream == null)
+				if (stream == null && File.Exists("../../NuGetForUnity/CreateDLL/.Templates/" + name))
+				{
+					stream = File.OpenRead("../../NuGetForUnity/CreateDLL/.Templates/" + name);
+				}
+                if (stream == null)
 				{
 					SystemProxy.LogError("Failed to load embedded CreateDLL..Templates." + name);
 					return null;
@@ -1335,6 +1339,10 @@ namespace NugetForUnity
 				if (File.Exists(path)) return File.ReadAllText(path);
 
 				var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
+				if (stream == null && File.Exists("../../NuGetForUnity/CreateDLL/.Templates/" + name))
+				{
+					stream = File.OpenRead("../../NuGetForUnity/CreateDLL/.Templates/" + name);
+				}
 				if (stream == null)
 				{
 					SystemProxy.LogError("Failed to load embedded CreateDLL..Templates." + name);

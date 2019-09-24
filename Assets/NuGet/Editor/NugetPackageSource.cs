@@ -164,7 +164,7 @@ namespace NugetForUnity
 		/// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
 		public NugetPackage GetSpecificPackage(NugetPackageIdentifier package)
 		{
-			return FindPackagesById(package).LastOrDefault();
+			return FindPackagesById(package).FirstOrDefault();
 		}
 
 		/// <summary>
