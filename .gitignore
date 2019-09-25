@@ -25,6 +25,7 @@
 **/.idea/**/shelf
 **/.idea/**/*.iml
 **/.idea/**/codeStyles
+**/.idea/**/.name
 
 #Unity3D Generated File On Crash Reports
 sysinfo.txt
@@ -87,3 +88,4 @@ bin
 /Packager/Assets/NuGet/Editor/NugetForUnity.dll
 /Packager/NuGetForUnity.unitypackage.log
 *.csproj.user
+nugetfu.exe

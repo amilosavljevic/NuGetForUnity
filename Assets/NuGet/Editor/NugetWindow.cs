@@ -1179,10 +1179,10 @@ has_link() {
 	fi
 }
 
-while read path
+git diff --name-only --cached | while read path
 do
 	has_link ""$path""
-done< <(git diff --name-only --cached)
+done
 ";
 			preCommitHook = preCommitHook.Replace("\r", "");
 			var preCommitFile = Path.Combine(gitFolder, "pre-commit");
