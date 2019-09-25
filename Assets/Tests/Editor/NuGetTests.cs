@@ -9,13 +9,7 @@ public class NuGetTests
     {
         NugetHelper.Restore();
     }
-
-    [Test]
-    public void LoadConfigFileTest()
-    {
-        NugetHelper.LoadNugetConfigFile();
-    }
-
+	
     [Test]
     public void InstallJsonTest()
     {

@@ -152,6 +152,6 @@ Install-Module UnitySetup -Scope CurrentUser
 ```
 Note that you need the exact version of VSSetup module so if you have some other version installed you should probably uninstall it first using `Uninstall-Module VSSetup`.
 
-In case UnitySetup can't find your installation of Unity 2018.3.11f1 you may need to modify the installed module. The `Get-Module -ListAvailable` command will also write in which folder is it installed. There you should edit `function Get-UnitySetupInstance` in UnitySetup.psm1 and change the values of `$BasePath` array.
+In case UnitySetup can't find your installation of Unity 2019.1.14f1 you may need to modify the installed module. The `Get-Module -ListAvailable` command will also write in which folder is it installed. There you should edit `function Get-UnitySetupInstance` in UnitySetup.psm1 and change the values of `$BasePath` array.
 
 In case you only have a newer version of Unity and want to upgrade this project to use it you just need to manually open the root folder and also the Packager folder in newer Unity so it updates the ProjectVersion file.
