@@ -829,7 +829,7 @@ namespace NugetForUnity
 				if (installedPackages.Contains(package))
 				{
 					// This specific version is installed
-					LinkUnlinkSourceButton(package);
+					LinkUnlinkSourceButton(installed);
 
 					if (GUILayout.Button("Uninstall", installButtonWidth, installButtonHeight))
 					{
@@ -843,7 +843,7 @@ namespace NugetForUnity
 				{
 					if (installed != null)
 					{
-						LinkUnlinkSourceButton(package);
+						LinkUnlinkSourceButton(installed);
 						if (installed < package)
 						{
 							// An older version is installed

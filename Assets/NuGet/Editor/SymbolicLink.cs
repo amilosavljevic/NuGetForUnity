@@ -25,6 +25,8 @@ namespace Nordeus.Nuget.Utility
 				return;
 			}
 
+			targetDir = Path.GetFullPath(targetDir);
+
 			var processInfo = new ProcessStartInfo("ln", $"-s \"{targetDir}\" \"{linkPath}\"")
 			{
 				CreateNoWindow = true,
@@ -87,7 +89,11 @@ namespace Nordeus.Nuget.Utility
 				return JunctionPoint.Exists(path);
 			}
 
-			return (new DirectoryInfo(path).Attributes & FileAttributes.ReparsePoint) != 0;
+			var dirInfo = new DirectoryInfo(path);
+			if (!dirInfo.Exists) return false;
+			var attrs = dirInfo.Attributes;
+
+			return (attrs & FileAttributes.ReparsePoint) != 0;
 		}
 	}
 }
