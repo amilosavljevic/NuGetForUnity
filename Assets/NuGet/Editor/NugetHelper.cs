@@ -712,6 +712,25 @@ namespace NugetForUnity
 				DeleteFile(file);
 			}
 		}
+		
+		private static string LoadInitClassFile(string name)
+		{
+			var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
+			if (stream == null && File.Exists("../../NuGetForUnity/CreateDLL/.Templates/" + name))
+			{
+				stream = File.OpenRead("../../NuGetForUnity/CreateDLL/.Templates/" + name);
+			}
+			if (stream == null)
+			{
+				SystemProxy.LogError("Failed to load embedded CreateDLL..Templates." + name);
+				return null;
+			}
+
+			using (var streamReader = new StreamReader(stream, Encoding.UTF8))
+			{
+				return streamReader.ReadToEnd();
+			}
+		}
 
 		/// <summary>
 		/// Uninstalls all of the currently installed packages.
@@ -721,25 +740,6 @@ namespace NugetForUnity
 			foreach (var package in installedPackages.Values.ToList())
 			{
 				Uninstall(package, false);
-			}
-
-			string LoadInitClassFile(string name)
-			{
-				var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
-				if (stream == null && File.Exists("../../NuGetForUnity/CreateDLL/.Templates/" + name))
-				{
-					stream = File.OpenRead("../../NuGetForUnity/CreateDLL/.Templates/" + name);
-				}
-                if (stream == null)
-				{
-					SystemProxy.LogError("Failed to load embedded CreateDLL..Templates." + name);
-					return null;
-				}
-
-				using (var streamReader = new StreamReader(stream, Encoding.UTF8))
-				{
-					return streamReader.ReadToEnd();
-				}
 			}
 
 			// Reset Init files
@@ -1324,37 +1324,37 @@ namespace NugetForUnity
 
 			return installSuccess;
 		}
+		
+		private static string PackageIdToMethodName(string pkgId)
+		{
+			pkgId = pkgId.Replace("nordeus.", "").Replace("unity.", "");
+			pkgId = pkgId.Substring(0, 1).ToUpper() + pkgId.Substring(1);
+			return "Init" + pkgId;
+		}
+
+		private static string LoadInitClassFile(string path, string name)
+		{
+			if (File.Exists(path)) return File.ReadAllText(path);
+
+			var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
+			if (stream == null && File.Exists("../../NuGetForUnity/CreateDLL/.Templates/" + name))
+			{
+				stream = File.OpenRead("../../NuGetForUnity/CreateDLL/.Templates/" + name);
+			}
+			if (stream == null)
+			{
+				SystemProxy.LogError("Failed to load embedded CreateDLL..Templates." + name);
+				return null;
+			}
+
+			using (var streamReader = new StreamReader(stream, Encoding.UTF8))
+			{
+				return streamReader.ReadToEnd();
+			}
+		}
 
 		private static void ProcessInitTemplate(string initTemplatePath, NugetPackage package)
 		{
-			string PackageIdToMethodName(string pkgId)
-			{
-				pkgId = pkgId.Replace("nordeus.", "").Replace("unity.", "");
-				pkgId = pkgId.Substring(0, 1).ToUpper() + pkgId.Substring(1);
-				return "Init" + pkgId;
-			}
-
-			string LoadInitClassFile(string path, string name)
-			{
-				if (File.Exists(path)) return File.ReadAllText(path);
-
-				var stream = typeof(NugetHelper).Assembly.GetManifestResourceStream("CreateDLL..Templates." + name);
-				if (stream == null && File.Exists("../../NuGetForUnity/CreateDLL/.Templates/" + name))
-				{
-					stream = File.OpenRead("../../NuGetForUnity/CreateDLL/.Templates/" + name);
-				}
-				if (stream == null)
-				{
-					SystemProxy.LogError("Failed to load embedded CreateDLL..Templates." + name);
-					return null;
-				}
-
-				using (var streamReader = new StreamReader(stream, Encoding.UTF8))
-				{
-					return streamReader.ReadToEnd();
-				}
-			}
-
 			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
 			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
 			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
