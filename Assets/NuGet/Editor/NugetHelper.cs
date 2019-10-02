@@ -1187,14 +1187,13 @@ namespace NugetForUnity
 				// look to see if the package (any version) is already installed
 
 
-				if (refreshAssets)
-					SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Installing Dependencies", 0.1f);
+				SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Installing Dependencies", 0.1f);
 
 				// install all dependencies
 				foreach (var dependency in package.Dependencies)
 				{
 					LogVerbose("Installing Dependency: {0} {1}", dependency.Id, dependency.Version);
-					var installed = InstallIdentifier(dependency);
+					var installed = InstallIdentifier(dependency, false);
 					if (!installed)
 					{
 						throw new Exception($"Failed to install dependency: {dependency.Id} {dependency.Version}.");
@@ -1235,8 +1234,7 @@ namespace NugetForUnity
 
 						LogVerbose("Downloading package {0} {1}", package.Id, package.Version);
 
-						if (refreshAssets)
-							SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Downloading Package", 0.3f);
+						SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Downloading Package", 0.3f);
 
 						var objStream = RequestUrl(package.DownloadUrl, package.PackageSource.UserName, package.PackageSource.ExpandedPassword, timeOut: null);
 						using (Stream file = File.Create(cachedPackagePath))
@@ -1246,8 +1244,7 @@ namespace NugetForUnity
 					}
 				}
 
-				if (refreshAssets)
-					SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Extracting Package", 0.6f);
+				SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Extracting Package", 0.6f);
 
 				string initTemplatePath = null;
 
@@ -1283,8 +1280,7 @@ namespace NugetForUnity
 					SystemProxy.LogError($"File not found: {cachedPackagePath}");
 				}
 
-				if (refreshAssets)
-					SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Cleaning Package", 0.9f);
+				SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Cleaning Package", 0.9f);
 
 				try
 				{
@@ -1318,8 +1314,8 @@ namespace NugetForUnity
 				{
 					SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Importing Package", 0.95f);
 					SystemProxy.RefreshAssets();
-					SystemProxy.ClearProgress();
 				}
+				SystemProxy.ClearProgress();
 			}
 
 			return installSuccess;
