@@ -891,6 +891,12 @@ namespace NugetForUnity
 					// Show the package description
 					EditorStyles.label.wordWrap = true;
 					EditorStyles.label.fontStyle = FontStyle.Normal;
+
+					if (!string.IsNullOrEmpty(package.Id))
+					{
+						GUILayout.Label($"Id: {package.Id}");
+					}
+
 					EditorGUILayout.LabelField($"{package.Description}");
 
 					// Show the package release notes
