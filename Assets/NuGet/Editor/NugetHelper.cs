@@ -936,14 +936,14 @@ namespace NugetForUnity
 		/// <param name="numberToSkip">The number of packages to skip before fetching.</param>
 		/// <returns>The list of available packages.</returns>
 		public static List<NugetPackage> Search(string searchTerm = "", bool includeAllVersions = false, bool includePrerelease = false,
-												int numberToGet = 15, int numberToSkip = 0)
+												int numberToGet = 15, int numberToSkip = 0, int firstNumberToGet = 15)
 		{
 			var packages = new List<NugetPackage>();
 
 			// Loop through all active sources and combine them into a single list
 			foreach (var source in packageSources.Where(s => s.IsEnabled))
 			{
-				var newPackages = source.Search(searchTerm, includeAllVersions, includePrerelease, numberToGet, numberToSkip);
+				var newPackages = source.Search(searchTerm, includeAllVersions, includePrerelease, source == packageSources.First() ? firstNumberToGet : numberToGet, numberToSkip);
 				packages.AddRange(newPackages);
 				packages = packages.Distinct().ToList();
 			}

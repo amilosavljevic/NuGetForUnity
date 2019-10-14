@@ -120,6 +120,11 @@ namespace NugetForUnity
 		private const int numberToGet = 15;
 
 		/// <summary>
+		/// The number of packages to get from the request to the first source on first search
+		/// </summary>
+		private const int firstNumberToGet = 100;
+
+		/// <summary>
 		/// The number of packages to skip when requesting a list of packages from the server.  This is used to get a new group of packages.
 		/// </summary>
 		[SerializeField]
@@ -378,7 +383,7 @@ namespace NugetForUnity
 		/// </summary>
 		private void UpdateOnlinePackages()
 		{
-			availablePackages = NugetHelper.Search(onlineSearchTerm != "Search" ? onlineSearchTerm : string.Empty, showAllOnlineVersions, showOnlinePrerelease, numberToGet, numberToSkip);
+			availablePackages = NugetHelper.Search(onlineSearchTerm != "Search" ? onlineSearchTerm : string.Empty, showAllOnlineVersions, showOnlinePrerelease, numberToGet, numberToSkip, firstNumberToGet);
 		}
 
 		/// <summary>
