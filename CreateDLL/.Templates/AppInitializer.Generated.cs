@@ -82,28 +82,20 @@ namespace Nordeus.Initialization
 			UnityEditor.EditorApplication.playModeStateChanged -= OnPlaymodeStateChanged;
 			UnityEditor.EditorApplication.playModeStateChanged += OnPlaymodeStateChanged;
 
-			if (UnityEditor.EditorApplication.isPlaying)
-			{
-				mainThreadId = Thread.CurrentThread.ManagedThreadId;
-			}
-
-			InitializeNonSceneStuff();
-
 			// Call initialization methods here only if we are not entering Play Mode.
 			// If we are about to enter Play Mode, they will be called by our UnityRuntimeInitializeOnLoad()
 			// method (by RuntimeInitializeOnLoadMethod attribute).
 			var enteringPlayMode = !UnityEditor.EditorApplication.isPlaying && UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode;
-			if (!enteringPlayMode) InitializeSceneStuff();
+			if (enteringPlayMode) return; 
+
+			mainThreadId = Thread.CurrentThread.ManagedThreadId;
+
+			InitializeNonSceneStuff();
+			InitializeSceneStuff();
 		}
 
 		private static void OnPlaymodeStateChanged(UnityEditor.PlayModeStateChange change)
 		{
-			if (change == UnityEditor.PlayModeStateChange.EnteredEditMode)
-			{
-				// When we exit play mode we need to initialize monosingletons again because they are marked as DontSave so they disappear when exiting Play mode
-				initializeSceneStuffStatus = State.NotInitialized;
-				InitializeSceneStuff();
-			}
 			// Reset main thread id if exiting from play mode in Editor.
 			if (!UnityEditor.EditorApplication.isPlaying)
 			{
