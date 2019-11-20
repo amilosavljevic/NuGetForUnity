@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using Nordeus.Nuget.Utility;
 
 namespace NugetForUnity
 {
@@ -780,6 +781,26 @@ namespace NugetForUnity
 
 			var foundPackage = package as NugetPackage ?? GetSpecificPackage(package);
 
+			// check for symbolic link and remove it first
+			var packagePath = Path.Combine(NugetConfigFile.RepositoryPath, $"{foundPackage.Id}.{foundPackage.Version}");
+			var packageSourcePaths = packagePath;
+			var packageEditorSources = Path.Combine(packagePath, "Editor");
+
+			var sourcesExists = SymbolicLink.Exists(packagePath);
+			if (!sourcesExists)
+			{
+				packageSourcePaths = Path.Combine(packagePath, "lib");
+				sourcesExists = SymbolicLink.Exists(packageSourcePaths);
+			}
+			var sourcesEditorExists = SymbolicLink.Exists(packageEditorSources);
+			var isLinked = sourcesExists || sourcesEditorExists;
+
+			if (isLinked)
+			{
+				LogVerbose("Removing symbolic link for package {0} {1}", foundPackage.Id, foundPackage.Version);
+				UnlinkSource(sourcesExists, packageSourcePaths, sourcesEditorExists, packageEditorSources, foundPackage, packagePath);
+			}
+
 			// update the package.config file
 			PackagesConfigFile.RemovePackage(foundPackage);
 			PackagesConfigFile.Save(PackagesConfigFilePath);
@@ -821,6 +842,35 @@ namespace NugetForUnity
 
 			if (refreshAssets)
 				SystemProxy.RefreshAssets();
+		}
+
+		public static void UnlinkSource(bool sourcesExists, string packageSourcePaths, bool sourcesEditorExists, string packageEditorSources,
+										NugetPackage package, string packagePath)
+		{
+			if (sourcesExists) SymbolicLink.Delete(packageSourcePaths);
+			if (sourcesEditorExists) SymbolicLink.Delete(packageEditorSources);
+			var path = Path.Combine(NugetConfigFile.RepositoryPath, $".{package.Id}.{package.Version}");
+			if (Directory.Exists(path))
+			{
+				Directory.Move(path, packagePath);
+				if (File.Exists(path + ".meta")) File.Move(path + ".meta", packagePath + ".meta");
+			}
+			else
+			{
+				path = Path.Combine(packagePath, ".lib");
+				if (Directory.Exists(path))
+				{
+					Directory.Move(path, Path.Combine(packagePath, "lib"));
+					if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "lib.meta"));
+				}
+
+				path = Path.Combine(packagePath, ".Editor");
+				if (Directory.Exists(path))
+				{
+					Directory.Move(path, Path.Combine(packagePath, "Editor"));
+					if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "Editor.meta"));
+				}
+			}
 		}
 
 		/// <summary>

@@ -1073,33 +1073,11 @@ namespace NugetForUnity
 			{
 				if (GUILayout.Button("Unlink Source", linkSourceButtonWidth, installButtonHeight))
 				{
-					if (sourcesExists) SymbolicLink.Delete(packageSources);
-					if (sourcesEditorExists) SymbolicLink.Delete(packageEditorSources);
-					var path = Path.Combine(NugetHelper.NugetConfigFile.RepositoryPath, $".{package.Id}.{package.Version}");
-					if (Directory.Exists(path))
-					{
-						Directory.Move(path, packagePath);
-						if (File.Exists(path + ".meta")) File.Move(path + ".meta", packagePath + ".meta");
-					}
-					else
-					{
-						path = Path.Combine(packagePath, ".lib");
-						if (Directory.Exists(path))
-						{
-							Directory.Move(path, Path.Combine(packagePath, "lib"));
-							if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "lib.meta"));
-						}
+					NugetHelper.UnlinkSource(sourcesExists, packageSources, sourcesEditorExists, packageEditorSources, package, packagePath);
 
-						path = Path.Combine(packagePath, ".Editor");
-						if (Directory.Exists(path))
-						{
-							Directory.Move(path, Path.Combine(packagePath, "Editor"));
-							if (File.Exists(path + ".meta")) File.Move(path + ".meta", Path.Combine(packagePath, "Editor.meta"));
-						}
-					}
+					AssetDatabase.Refresh();
 				}
 
-				AssetDatabase.Refresh();
 
 				return;
 			}
