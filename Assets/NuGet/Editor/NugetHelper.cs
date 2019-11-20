@@ -1128,7 +1128,7 @@ namespace NugetForUnity
 
 			if (foundPackage != null)
 			{
-				foundPackage.IsManuallyInstalled = package.IsManuallyInstalled;
+				if (package.IsManuallyInstalled) foundPackage.IsManuallyInstalled = true;
 				return Install(foundPackage, refreshAssets);
 			}
 			else
@@ -1193,6 +1193,7 @@ namespace NugetForUnity
 				foreach (var dependency in package.Dependencies)
 				{
 					LogVerbose("Installing Dependency: {0} {1}", dependency.Id, dependency.Version);
+
 					var installed = InstallIdentifier(dependency, false);
 					if (!installed)
 					{

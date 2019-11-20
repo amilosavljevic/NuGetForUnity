@@ -428,6 +428,12 @@ namespace NugetForUnity
 				try
 				{
 					var newPackages = GetPackagesFromUrl(url, UserName, ExpandedPassword);
+					if (!includeAllVersions) //API doesn't properly return only latest version, manually clean it up
+					{
+						newPackages = newPackages.GroupBy(package => package.Id)
+												.Select(g => g.OrderBy(package => package.Version).Last())
+												.ToList();
+					}
 					updates.AddRange(newPackages);
 				}
 				catch (Exception e)
