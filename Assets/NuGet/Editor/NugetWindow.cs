@@ -1084,7 +1084,6 @@ namespace NugetForUnity
 
 			if (GUILayout.Button("Link Source", linkSourceButtonWidth, installButtonHeight))
 			{
-				InstallPreCommitHook();
 				var sourcePath = GetSourceProjPath(package);
 				if (string.IsNullOrEmpty(sourcePath)) return;
 				if (Path.GetFileName(sourcePath) == "Source") sourcePath = Path.GetDirectoryName(sourcePath);
@@ -1141,50 +1140,6 @@ namespace NugetForUnity
 
 				AssetDatabase.Refresh();
 			}
-		}
-
-		public static void InstallPreCommitHook()
-		{
-			var gitFolder = Path.Combine(Directory.GetCurrentDirectory(), ".git/hooks");
-			if (!Directory.Exists(gitFolder))
-			{
-				var parentFolder = Path.GetDirectoryName(Directory.GetCurrentDirectory());
-				if (parentFolder == null) return;
-				gitFolder = Path.Combine(parentFolder, ".git/hooks");
-				if (!Directory.Exists(gitFolder)) return;
-			}
-
-			var preCommitHook = @"
-has_link() {
-	local path=""$1""
-	if echo ""$path"" | grep -vq '/'; then
-		return
-	fi
-	if [ -L ""$path"" ]; then
-		echo ""Error: You can't commit paths with symbolic links: '$path'""
-		exit 1
-	else
-		has_link ""${path%/*}""
-	fi
-}
-
-git diff --name-only --cached | while read path
-do
-	has_link ""$path""
-done
-";
-			preCommitHook = preCommitHook.Replace("\r", "");
-			var preCommitFile = Path.Combine(gitFolder, "pre-commit");
-			var preCommitContent = "#!/bin/bash";
-			if (File.Exists(preCommitFile))
-			{
-				preCommitContent = File.ReadAllText(preCommitFile);
-				if (preCommitContent.Contains(preCommitHook)) return;
-				preCommitContent = preCommitContent.Replace("#!/bin/sh", "#!/bin/bash");
-			}
-
-			preCommitContent += "\n\n" + preCommitHook;
-			File.WriteAllText(preCommitFile, preCommitContent);
 		}
 
 		private static string GetSourceProjPath(NugetPackage package)
