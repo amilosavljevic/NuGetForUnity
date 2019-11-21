@@ -38,6 +38,12 @@
     <Compile Include="..\..\Assets\NuGet\Editor\RepositoryType.cs">
       <Link>RepositoryType.cs</Link>
     </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\SymbolicLink.cs">
+      <Link>SymbolicLink.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Assets\NuGet\Editor\JunctionPoint.cs">
+      <Link>JunctionPoint.cs</Link>
+    </Compile>
   </ItemGroup>
 
 </Project>
