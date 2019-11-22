@@ -276,8 +276,9 @@ namespace NugetForUnity
 
 							// remove all existing dependencies from the .nuspec
 							nuspec.Dependencies.Clear();
-
-							nuspec.Dependencies = installedPackages.Cast<NugetPackageIdentifier>().ToList();
+							
+							nuspec.Dependencies.Add(new NugetFrameworkGroup());
+							nuspec.Dependencies[0].Dependencies = installedPackages.Cast<NugetPackageIdentifier>().ToList();
 						}
 					}
 				}
@@ -287,7 +288,8 @@ namespace NugetForUnity
 					EditorGUILayout.Space();
 					// display the dependencies
 					NugetPackageIdentifier toDelete = null;
-					foreach (var dependency in nuspec.Dependencies)
+					var nuspecFrameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(nuspec);
+					foreach (var dependency in nuspecFrameworkGroup.Dependencies)
 					{
 						EditorGUILayout.BeginHorizontal();
 						GUILayout.Space(25);
@@ -308,7 +310,7 @@ namespace NugetForUnity
 
 					if (toDelete != null)
 					{
-						nuspec.Dependencies.Remove(toDelete);
+						nuspecFrameworkGroup.Dependencies.Remove(toDelete);
 					}
 
 					EditorGUILayout.BeginHorizontal();
@@ -317,7 +319,7 @@ namespace NugetForUnity
 
 						if (GUILayout.Button("Add Dependency"))
 						{
-							nuspec.Dependencies.Add(new NugetPackageIdentifier());
+							nuspecFrameworkGroup.Dependencies.Add(new NugetPackageIdentifier());
 						}
 					}
 					EditorGUILayout.EndHorizontal();

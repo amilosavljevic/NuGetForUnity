@@ -109,7 +109,8 @@ namespace NugetForUnity
 			// remove a package as a root if another package is dependent on it
 			foreach (var package in installedPackages)
 			{
-				foreach (var dependency in package.Dependencies)
+				var frameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(package);
+				foreach (var dependency in frameworkGroup.Dependencies)
 				{
 					roots.RemoveAll(p => p.Id == dependency.Id);
 				}
@@ -151,7 +152,8 @@ namespace NugetForUnity
 						var selectedPackage = installedPackages[selectedPackageIndex];
 						foreach (var package in installedPackages)
 						{
-							foreach (var dependency in package.Dependencies)
+							var frameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(package);
+							foreach (var dependency in frameworkGroup.Dependencies)
 							{
 								if (dependency.Id == selectedPackage.Id)
 								{
@@ -210,7 +212,9 @@ namespace NugetForUnity
 				if (expanded[package])
 				{
 					EditorGUI.indentLevel++;
-					foreach (var dependency in package.Dependencies)
+					
+					var frameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(package);
+					foreach (var dependency in frameworkGroup.Dependencies)
 					{
 						DrawDepencency(dependency);
 					}

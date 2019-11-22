@@ -26,6 +26,8 @@ namespace NugetForUnity
 		public static string CurrentDir => Application.dataPath;
 		public static bool IsPlayingOrWillChangePlaymode => EditorApplication.isPlayingOrWillChangePlaymode;
 
+		public static string UnityVersion => Application.unityVersion;
+
 		public static void Log(string message)
 		{
 			Debug.Log(message);

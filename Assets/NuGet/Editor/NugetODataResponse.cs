@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Xml.Linq;
 
 namespace NugetForUnity
@@ -80,7 +79,6 @@ namespace NugetForUnity
 				}
 
 				// Get dependencies
-				package.Dependencies = new List<NugetPackageIdentifier>();
 				var rawDependencies = entryProperties.GetProperty("Dependencies");
 				if (!string.IsNullOrEmpty(rawDependencies))
 				{
@@ -90,15 +88,6 @@ namespace NugetForUnity
 					foreach (var dependencyString in dependencies)
 					{
 						var details = dependencyString.Split(':');
-						var dependency = new NugetPackageIdentifier(details[0], details[1]);
-
-						// some packages (ex: FSharp.Data - 2.1.0) have inproper "semi-empty" dependencies such as:
-						// "Zlib.Portable:1.10.0:portable-net40+sl50+wp80+win80|::net40"
-						// so we need to only add valid dependencies and skip invalid ones
-						if (string.IsNullOrEmpty(dependency.Id) && string.IsNullOrEmpty(dependency.Version))
-						{
-							continue;
-						}
 
 						var framework = string.Empty;
 						if (details.Length > 2)
@@ -106,83 +95,25 @@ namespace NugetForUnity
 							framework = details[2];
 						}
 
-						if (dependencyGroups.TryGetValue(framework, out var group))
+						if (!dependencyGroups.TryGetValue(framework, out var group))
 						{
-							group.Dependencies.Add(dependency);
-						}
-						else
-						{
-							group = new NugetFrameworkGroup {Dependencies = new List<NugetPackageIdentifier> {dependency}};
+							group = new NugetFrameworkGroup {TargetFramework = framework};
 							dependencyGroups.Add(framework, group);
 						}
+						
+						var dependency = new NugetPackageIdentifier(details[0], details[1]);
+	                     // some packages (ex: FSharp.Data - 2.1.0) have improper "semi-empty" dependencies such as:
+	                     // "Zlib.Portable:1.10.0:portable-net40+sl50+wp80+win80|::net40"
+	                     // so we need to only add valid dependencies and skip invalid ones
+	                     if (!string.IsNullOrEmpty(dependency.Id) && !string.IsNullOrEmpty(dependency.Version))
+	                     {
+		                     group.Dependencies.Add(dependency);
+	                     }
 					}
 
-					// find the correct group for this project
-					var intDotNetVersion = (int)NugetHelper.DotNetVersion;
-					//bool using46 = DotNetVersion == ApiCompatibilityLevel.NET_4_6; // NET_4_6 option was added in Unity 5.6
-					var using46 = intDotNetVersion == 3; // NET_4_6 = 3 in Unity 5.6 and Unity 2017.1 - use the hard-coded int value to ensure it works in earlier versions of Unity
-					NugetFrameworkGroup selectedGroup = null;
-
-					foreach (var kvPair in dependencyGroups.OrderByDescending(x => x.Key))
+					foreach (var group in dependencyGroups.Values)
 					{
-						var framework = kvPair.Key;
-						var group = kvPair.Value;
-
-						// Select the highest .NET library available that is supported
-						// See here: https://docs.nuget.org/ndocs/schema/target-frameworks
-						if (using46 && framework == "net462")
-						{
-							selectedGroup = group;
-						}
-						else if (using46 && framework == "net461")
-						{
-							selectedGroup = group;
-						}
-						else if (using46 && framework == "net46")
-						{
-							selectedGroup = group;
-						}
-						else if (using46 && framework == "net452")
-						{
-							selectedGroup = group;
-						}
-						else if (using46 && framework == "net451")
-						{
-							selectedGroup = group;
-						}
-						else if (using46 && framework == "net45")
-						{
-							selectedGroup = group;
-						}
-						else if (using46 && framework == "net403")
-						{
-							selectedGroup = group;
-						}
-						else if (using46 && (framework == "net40" || framework == "net4"))
-						{
-							selectedGroup = group;
-						}
-						else if (framework == "net35")
-						{
-							selectedGroup = group;
-						}
-						else if (framework == "net20")
-						{
-							selectedGroup = group;
-						}
-						else if (framework == "net11")
-						{
-							selectedGroup = group;
-						}
-						else if (framework == string.Empty)
-						{
-							selectedGroup = group;
-						}
-					}
-
-					if (selectedGroup != null)
-					{
-						package.Dependencies = selectedGroup.Dependencies;
+						package.Dependencies.Add(group);
 					}
 				}
 

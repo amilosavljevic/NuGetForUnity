@@ -135,10 +135,13 @@ namespace NugetForUnity
 			config.Add(addElement);
 
 			// save the default push source
-			addElement = new XElement("add");
-			addElement.Add(new XAttribute("key", "DefaultPushSource"));
-			addElement.Add(new XAttribute("value", DefaultPushSource));
-			config.Add(addElement);
+			if (DefaultPushSource != null)
+			{
+				addElement = new XElement("add");
+				addElement.Add(new XAttribute("key", "DefaultPushSource"));
+				addElement.Add(new XAttribute("value", DefaultPushSource));
+				config.Add(addElement);
+			}
 
 			// save the DeleteInitCode setting
 			addElement = new XElement("add");

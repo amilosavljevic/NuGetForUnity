@@ -747,6 +747,11 @@ namespace NugetForUnity
 						NugetHelper.UpdateInstalledPackages();
 						UpdateUpdatePackages();
 					}
+					
+					if (GUILayout.Button("Refresh", GUILayout.Width(60)))
+					{
+						Refresh(true);
+					}
 				}
 
 				var showPrereleaseTemp = EditorGUILayout.Toggle("Show Prerelease", showPrereleaseUpdates);
@@ -917,7 +922,9 @@ namespace NugetForUnity
 						EditorStyles.label.wordWrap = true;
 						EditorStyles.label.fontStyle = FontStyle.Italic;
 						var builder = new StringBuilder();
-						foreach (var dependency in package.Dependencies)
+						
+						var frameworkGroup = NugetHelper.GetBestDependencyFrameworkGroupForCurrentSettings(package);
+						foreach (var dependency in frameworkGroup.Dependencies)
 						{
 							builder.Append($" {dependency.Id} {dependency.Version};");
 						}

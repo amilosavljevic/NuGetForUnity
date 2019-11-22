@@ -26,7 +26,19 @@ namespace NugetForUnity
 		/// <summary>
 		/// Gets path, with the values of environment variables expanded.
 		/// </summary>
-		public string ExpandedPath => Environment.ExpandEnvironmentVariables(SavedPath);
+		public string ExpandedPath
+		{
+			get
+			{
+				var path = Environment.ExpandEnvironmentVariables(SavedPath);
+				if (!path.StartsWith("http") && path != "(Aggregate source)" && !Path.IsPathRooted(path))
+				{
+					path = Path.Combine(Path.GetDirectoryName(NugetHelper.NugetConfigFilePath), path);
+				}
+
+				return path;
+			}
+		}
 
 		public string UserName { get; set; }
 
@@ -85,7 +97,6 @@ namespace NugetForUnity
 
 		/// <summary>
 		/// Gets a NugetPackage from the NuGet server that matches (or is in range of) the <see cref="NugetPackageIdentifier"/> given.
-		/// If an exact match isn't found, it selects the next closest version available.
 		/// </summary>
 		/// <param name="package">The <see cref="NugetPackageIdentifier"/> containing the ID and Version of the package to get.</param>
 		/// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
@@ -95,30 +106,34 @@ namespace NugetForUnity
 
 			if (IsLocalPath)
 			{
-				var localPackagePath = Path.Combine(ExpandedPath, $"./{package.Id}.{package.Version}.nupkg");
-				if (File.Exists(localPackagePath))
+				if (!package.HasVersionRange)
 				{
-					var localPackage = NugetPackage.FromNupkgFile(localPackagePath);
-					foundPackages = new List<NugetPackage> { localPackage };
+					var localPackagePath = Path.Combine(ExpandedPath, $"./{package.Id}.{package.Version}.nupkg");
+					if (File.Exists(localPackagePath))
+					{
+						var localPackage = NugetPackage.FromNupkgFile(localPackagePath);
+						foundPackages = new List<NugetPackage> {localPackage};
+					}
+					else { foundPackages = new List<NugetPackage>(); }
 				}
 				else
 				{
-					// TODO: Sort the local packages?  Currently assuming they are in alphabetical order due to the filesystem.
 					// TODO: Optimize to no longer use GetLocalPackages, since that loads the .nupkg itself
 
-					// Try to find later versions of the same package
-					var packages = GetLocalPackages(package.Id, true, true);
-					foundPackages = new List<NugetPackage>(packages.SkipWhile(x => !package.InRange(x)));
-				  }
+					foundPackages = GetLocalPackages(package.Id, true, true);
+				}
 			}
 			else
 			{
 				// See here: http://www.odata.org/documentation/odata-version-2-0/uri-conventions/
+				// Note: without $orderby=Version, the Version filter below will not work
+				var url = $"{ExpandedPath}FindPackagesById()?id='{package.Id}'&$orderby=Version asc";
 
-				// We used to rely on expressions such as &$filter=Version ge '9.0.1' to find versions in a range, but the results were sorted alphabetically. This
-				// caused version 10.0.0 to be less than version 9.0.0. In order to work around this issue, we'll request all versions and perform filtering ourselves.
-
-				var url = $"{ExpandedPath}FindPackagesById()?$orderby=Version asc&id='{package.Id}'";
+				// Are we looking for a specific package?
+				if (!package.HasVersionRange)
+				{
+					url = $"{url}&$filter=Version eq '{package.Version}'";
+				}
 
 				try
 				{
@@ -129,28 +144,18 @@ namespace NugetForUnity
 					foundPackages = new List<NugetPackage>();
 					SystemProxy.LogError($"Unable to retrieve package list from {url}\n{e}");
 				}
-
-				foundPackages.Sort();
-				if (foundPackages.Exists(package.InRange))
-				{
-					// Return all the packages in the range of versions specified by 'package'.
-					foundPackages.RemoveAll(p => !package.InRange(p));
-				}
-				else
-				{
-					// There are no packages in the range of versions specified by 'package'.
-					// Return the most recent version after the version specified by 'package'.
-					foundPackages.RemoveAll(p => package.CompareVersion(p.Version) < 0);
-					if (foundPackages.Count > 0)
-					{
-						foundPackages.RemoveRange(1, foundPackages.Count - 1);
-					}
-				}
 			}
 
-			foreach (var foundPackage in foundPackages)
+			if (foundPackages != null)
 			{
-				foundPackage.PackageSource = this;
+				// Return all the packages in the range of versions specified by 'package'.
+				foundPackages.RemoveAll(p => !package.InRange(p));
+				foundPackages.Sort();
+
+				foreach (var foundPackage in foundPackages)
+				{
+					foundPackage.PackageSource = this;
+				}
 			}
 
 			return foundPackages;
@@ -158,7 +163,6 @@ namespace NugetForUnity
 
 		/// <summary>
 		/// Gets a NugetPackage from the NuGet server that matches (or is in range of) the <see cref="NugetPackageIdentifier"/> given.
-		/// If an exact match isn't found, it selects the next closest version available.
 		/// </summary>
 		/// <param name="package">The <see cref="NugetPackageIdentifier"/> containing the ID and Version of the package to get.</param>
 		/// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
@@ -450,15 +454,11 @@ namespace NugetForUnity
 				}
 			}
 
-			// sort alphabetically
+			// sort alphabetically, then by version descending
 			updates.Sort(delegate (NugetPackage x, NugetPackage y)
 			{
-				// ReSharper disable once ConvertIfStatementToSwitchStatement
-				if (x.Id == null && y.Id == null) return 0;
-				if (x.Id == null) return -1;
-				if (y.Id == null) return 1;
-				if (x.Id == y.Id) return string.Compare(x.Version, y.Version, StringComparison.Ordinal);
-					return string.Compare(x.Id, y.Id, StringComparison.Ordinal);
+				if (x.Id == y.Id) return -1 * x.CompareVersion(y.Version);
+				return string.Compare(x.Id, y.Id, StringComparison.Ordinal);
 			});
 
 #if TEST_GET_UPDATES_FALLBACK
@@ -526,15 +526,11 @@ namespace NugetForUnity
 				var id = new NugetPackageIdentifier(installedPackage.Id, versionRange); 
 				var packageUpdates = FindPackagesById(id);
 
-				var mostRecentPrerelease = includePrerelease ? packageUpdates.FindLast(p => p.IsPrerelease) : null;
-				packageUpdates.RemoveAll(p => p.IsPrerelease && p != mostRecentPrerelease);
+				if (!includePrerelease) { packageUpdates.RemoveAll(p => p.IsPrerelease); }
+				if( packageUpdates.Count == 0 ) { continue; }
 
-				if (!includeAllVersions && packageUpdates.Count > 0)
-				{
-					packageUpdates.RemoveRange(0, packageUpdates.Count - 1);
-				}
-
-				updates.AddRange(packageUpdates);
+				var skip = includeAllVersions ? 0 : packageUpdates.Count - 1;
+				updates.AddRange(packageUpdates.Skip(skip));
 			}
 
 			NugetHelper.LogVerbose("NugetPackageSource.GetUpdatesFallback took {0} ms", stopwatch.ElapsedMilliseconds);

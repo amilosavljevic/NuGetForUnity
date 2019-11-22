@@ -97,7 +97,7 @@ namespace NugetForUnity
 		/// <summary>
 		/// The current .NET version being used (2.0 [actually 3.5], 4.6, etc).
 		/// </summary>
-		internal static int DotNetVersion;
+		private static int DotNetVersion => SystemProxy.GetApiCompatibilityLevel();
 
 		private static NugetConfigFile nugetConfigFile;
 
@@ -111,8 +111,6 @@ namespace NugetForUnity
 			{
 				return;
 			}
-
-			DotNetVersion = SystemProxy.GetApiCompatibilityLevel();
 
 			// Load the NuGet.config file
 			nugetConfigFile = LoadNugetConfigFile();
@@ -336,19 +334,17 @@ namespace NugetForUnity
 
 			// Delete documentation folders since they sometimes have HTML docs with JavaScript, which Unity tried to parse as "UnityScript"
 			DeleteDirectory(packageInstallDirectory + "/docs");
+			
+			// Delete ref folder, as it is just used for compile-time reference and does not contain implementations.
+			// Leaving it results in "assembly loading" and "multiple pre-compiled assemblies with same name" errors
+			DeleteDirectory(packageInstallDirectory + "/ref");
 
 			if (Directory.Exists(packageInstallDirectory + "/lib"))
 			{
-				var intDotNetVersion = DotNetVersion; // c
-				//bool using46 = DotNetVersion == ApiCompatibilityLevel.NET_4_6; // NET_4_6 option was added in Unity 5.6
-				var using46 = intDotNetVersion == 3; // NET_4_6 = 3 in Unity 5.6 and Unity 2017.1 - use the hard-coded int value to ensure it works in earlier versions of Unity
-				var usingStandard2 = intDotNetVersion == 6; // using .net standard 2.0
-
 				var selectedDirectories = new List<string>();
 
 				// go through the library folders in descending order (highest to lowest version)
-				var libDirectories = Directory.GetDirectories(packageInstallDirectory + "/lib").Select(s => new DirectoryInfo(s))
-											.OrderByDescending(di => di.Name.ToLower()).ToList();
+				var libDirectories = Directory.GetDirectories(packageInstallDirectory + "/lib").Select(s => new DirectoryInfo(s)).ToList();
 
 				if (libDirectories.Count == 1 && (libDirectories[0].Name.StartsWith("net") || libDirectories[0].Name.StartsWith("unity")))
 				{
@@ -357,119 +353,23 @@ namespace NugetForUnity
 				}
 				else
 				{
-					foreach (var directory in libDirectories)
+					var targetFrameworks = libDirectories.Select(x => x.Name.ToLower());
+					var bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
+					if (bestTargetFramework != null)
 					{
-						var directoryName = directory.Name.ToLower();
+						var bestLibDirectory = libDirectories.First(x => x.Name.ToLower() == bestTargetFramework);
 
-						// Select the highest .NET library available that is supported
-						// See here: https://docs.nuget.org/ndocs/schema/target-frameworks
-						if (usingStandard2 && directoryName == "netstandard2.0")
+						if (bestTargetFramework == "unity" ||
+						    bestTargetFramework == "net35-unity full v3.5" ||
+						    bestTargetFramework == "net35-unity subset v3.5")
 						{
-							selectedDirectories.Add(directory.FullName);
-							break;
+							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "unity"));
+							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity full v3.5"));
+							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity subset v3.5"));
 						}
-						if (usingStandard2 && directoryName == "netstandard1.6")
+						else
 						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (using46 && directoryName == "net462")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (usingStandard2 && directoryName == "netstandard1.5")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (using46 && directoryName == "net461")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (usingStandard2 && directoryName == "netstandard1.4")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (using46 && directoryName == "net46")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (usingStandard2 && directoryName == "netstandard1.3")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (using46 && directoryName == "net452")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (using46 && directoryName == "net451")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (usingStandard2 && directoryName == "netstandard1.2")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (using46 && directoryName == "net45")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (usingStandard2 && directoryName == "netstandard1.1")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (usingStandard2 && directoryName == "netstandard1.0")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (using46 && directoryName == "net403")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (using46 && (directoryName == "net40" || directoryName == "net4"))
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (
-							directoryName == "unity" ||
-							directoryName == "net35-unity full v3.5" ||
-							directoryName == "net35-unity subset v3.5")
-						{
-							// Keep all directories targeting Unity within a package
-							// ReSharper disable once PossibleNullReferenceException
-							var parentName = directory.Parent.FullName;
-							selectedDirectories.Add(Path.Combine(parentName, "unity"));
-							selectedDirectories.Add(Path.Combine(parentName, "net35-unity full v3.5"));
-							selectedDirectories.Add(Path.Combine(parentName, "net35-unity subset v3.5"));
-							break;
-						}
-						if (directoryName == "net35")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (directoryName == "net20")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
-						}
-						if (directoryName == "net11")
-						{
-							selectedDirectories.Add(directory.FullName);
-							break;
+							selectedDirectories.Add(bestLibDirectory.FullName);
 						}
 					}
 				}
@@ -479,10 +379,12 @@ namespace NugetForUnity
 					LogVerbose("Using {0}", dir);
 				}
 
-				// delete all of the libaries except for the selected one
+				// delete all of the libraries except for the selected one
 				foreach (var directory in libDirectories)
 				{
-					if (!selectedDirectories.Contains(directory.FullName))
+					var validDirectory = selectedDirectories
+					                      .Any(d => string.Compare(d, directory.FullName, StringComparison.CurrentCultureIgnoreCase) == 0);
+					if (!validDirectory)
 					{
 						DeleteDirectory(directory.FullName);
 					}
@@ -530,27 +432,7 @@ namespace NugetForUnity
 			{
 				var pluginsDirectory = SystemProxy.CurrentDir + "/Plugins/";
 
-				if (!Directory.Exists(pluginsDirectory))
-				{
-					Directory.CreateDirectory(pluginsDirectory);
-				}
-
-				var files = Directory.GetFiles(packageInstallDirectory + "/unityplugin");
-				foreach (var file in files)
-				{
-					var newFilePath = pluginsDirectory + Path.GetFileName(file);
-
-					try
-					{
-						LogVerbose("Moving {0} to {1}", file, newFilePath);
-						DeleteFile(newFilePath);
-						File.Move(file, newFilePath);
-					}
-					catch (UnauthorizedAccessException)
-					{
-						SystemProxy.LogWarning($"{newFilePath} couldn't be overwritten. It may be a native plugin already locked by Unity. Please close Unity and manually delete it.");
-					}
-				}
+				DirectoryCopy(packageInstallDirectory + "/unityplugin", pluginsDirectory);
 
 				LogVerbose("Deleting {0}", packageInstallDirectory + "/unityplugin");
 
@@ -613,6 +495,146 @@ namespace NugetForUnity
 				DeleteFile(packageInstallDirectory + "/StreamingAssets.meta");
 			}
 		}
+		
+		public static NugetFrameworkGroup GetBestDependencyFrameworkGroupForCurrentSettings(NugetPackage package)
+		{
+			var targetFrameworks = package.Dependencies.Select(x => x.TargetFramework);
+
+			var bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
+			return package.Dependencies.FirstOrDefault(x => x.TargetFramework == bestTargetFramework) ?? new NugetFrameworkGroup();
+		}
+
+		public static NugetFrameworkGroup GetBestDependencyFrameworkGroupForCurrentSettings(NuspecFile nuspec)
+		{
+			var targetFrameworks = nuspec.Dependencies.Select(x => x.TargetFramework);
+
+			var bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
+			return nuspec.Dependencies.FirstOrDefault(x => x.TargetFramework == bestTargetFramework) ?? new NugetFrameworkGroup();
+		}
+		
+		private struct UnityVersion : IComparable<UnityVersion>
+		{
+			public int Major;
+			public int Minor;
+			public int Revision;
+			public char Release;
+			public int Build;
+
+			public static UnityVersion Current = new UnityVersion(SystemProxy.UnityVersion);
+
+			public UnityVersion(string version)
+			{
+				Match match = Regex.Match(version, @"(\d+)\.(\d+)\.(\d+)([fpba])(\d+)");
+				if (!match.Success) { throw new ArgumentException("Invalid unity version"); }
+
+				Major = int.Parse(match.Groups[1].Value);
+				Minor = int.Parse(match.Groups[2].Value);
+				Revision = int.Parse(match.Groups[3].Value);
+				Release = match.Groups[4].Value[0];
+				Build = int.Parse(match.Groups[5].Value);
+			}
+
+			public static int Compare(UnityVersion a, UnityVersion b)
+			{
+
+				if (a.Major < b.Major) { return -1; }
+				if (a.Major > b.Major) { return 1; }
+
+				if (a.Minor < b.Minor) { return -1; }
+				if (a.Minor > b.Minor) { return 1; }
+
+				if (a.Revision < b.Revision) { return -1; }
+				if (a.Revision > b.Revision) { return 1; }
+
+				if (a.Release < b.Release) { return -1; }
+				if (a.Release > b.Release) { return 1; }
+
+				if (a.Build < b.Build) { return -1; }
+				if (a.Build > b.Build) { return 1; }
+
+				return 0;
+			}
+
+			public int CompareTo(UnityVersion other)
+			{
+				return Compare(this, other);
+			}
+		}
+
+		private struct PriorityFramework { public int Priority; public string Framework; }
+		private static readonly string[] unityFrameworks = {"unity"};
+		private static readonly string[] netStandardFrameworks =
+		{
+			"netstandard2.0", "netstandard1.6", "netstandard1.5", "netstandard1.4", "netstandard1.3", "netstandard1.2", "netstandard1.1",
+			"netstandard1.0"
+		};
+		private static readonly string[] net4Unity2018Frameworks = {"net471", "net47"};
+		private static readonly string[] net4Unity2017Frameworks =
+			{"net462", "net461", "net46", "net452", "net451", "net45", "net403", "net40", "net4"};
+		private static readonly string[] net3Frameworks = {"net35-unity full v3.5", "net35-unity subset v3.5", "net35", "net20", "net11"};
+		private static readonly string[] defaultFrameworks = {string.Empty};
+
+		public static string TryGetBestTargetFrameworkForCurrentSettings(IEnumerable<string> targetFrameworks)
+		{
+			var intDotNetVersion = DotNetVersion; // c
+			//bool using46 = DotNetVersion == ApiCompatibilityLevel.NET_4_6; // NET_4_6 option was added in Unity 5.6
+			var using46 = intDotNetVersion == 3; // NET_4_6 = 3 in Unity 5.6 and Unity 2017.1 - use the hard-coded int value to ensure it works in earlier versions of Unity
+			var usingStandard2 = intDotNetVersion == 6; // using .net standard 2.0
+
+			var frameworkGroups = new List<string[]> { unityFrameworks };
+
+			if (usingStandard2)
+			{
+				frameworkGroups.Add(netStandardFrameworks);
+			}
+			else if (using46)
+			{
+				if(UnityVersion.Current.Major >= 2018)
+				{
+					frameworkGroups.Add(net4Unity2018Frameworks);
+				}
+
+				if (UnityVersion.Current.Major >= 2017)
+				{
+					frameworkGroups.Add(net4Unity2017Frameworks);
+				}
+
+				frameworkGroups.Add(net3Frameworks);
+				frameworkGroups.Add(netStandardFrameworks);
+			}
+			else
+			{
+				frameworkGroups.Add(net3Frameworks);
+			}
+
+			frameworkGroups.Add(defaultFrameworks);
+
+			int GetTfmPriority(string tfm)
+			{
+				for (var i = 0; i < frameworkGroups.Count; ++i)
+				{
+					var index = Array.IndexOf(frameworkGroups[i], tfm);
+					if (index >= 0)
+					{
+						return i * 1000 + index;
+					}
+				}
+
+				return int.MaxValue;
+			}
+
+			// Select the highest .NET library available that is supported
+			// See here: https://docs.nuget.org/ndocs/schema/target-frameworks
+			var result = targetFrameworks
+			             .Select(tfm => new PriorityFramework {Priority = GetTfmPriority(tfm), Framework = tfm})
+			             .Where(pfm => pfm.Priority != int.MaxValue)
+			             .ToArray() // Ensure we don't search for priorities again when sorting
+			             .OrderBy(pfm => pfm.Priority)
+			             .Select(pfm => pfm.Framework)
+			             .FirstOrDefault();
+
+			return result;
+		}
 
 		/// <summary>
 		/// Calls "nuget.exe pack" to create a .nupkg file based on the given .nuspec file.
@@ -658,6 +680,55 @@ namespace NugetForUnity
 			var arguments = $"push \"{packagePath}\" {apiKey} -configfile \"{NugetConfigFilePath}\"";
 
 			RunNugetProcess(arguments);
+		}
+		
+		/// <summary>
+		/// Recursively copies all files and sub-directories from one directory to another.
+		/// </summary>
+		/// <param name="sourceDirectoryPath">The filepath to the folder to copy from.</param>
+		/// <param name="destDirectoryPath">The filepath to the folder to copy to.</param>
+		private static void DirectoryCopy(string sourceDirectoryPath, string destDirectoryPath)
+		{
+			var dir = new DirectoryInfo(sourceDirectoryPath);
+
+			if (!dir.Exists)
+			{
+				throw new DirectoryNotFoundException(
+				                                     "Source directory does not exist or could not be found: "
+				                                     + sourceDirectoryPath);
+			}
+
+			// if the destination directory doesn't exist, create it
+			if (!Directory.Exists(destDirectoryPath))
+			{
+				LogVerbose("Creating new directory: {0}", destDirectoryPath);
+				Directory.CreateDirectory(destDirectoryPath);
+			}
+
+			// get the files in the directory and copy them to the new location
+			var files = dir.GetFiles();
+			foreach (var file in files)
+			{
+				var newFilePath = Path.Combine(destDirectoryPath, file.Name);
+
+				try
+				{
+					LogVerbose("Moving {0} to {1}", file.ToString(), newFilePath);
+					file.CopyTo(newFilePath, true);
+				}
+				catch (Exception e)
+				{
+					SystemProxy.LogWarning($"{file} couldn't be moved to {newFilePath}. It may be a native plugin already locked by Unity. Please trying closing Unity and manually moving it. \n{e}");
+				}
+			}
+
+			// copy sub-directories and their contents to new location
+			var dirs = dir.GetDirectories();
+			foreach (var subdir in dirs)
+			{
+				var temppath = Path.Combine(destDirectoryPath, subdir.Name);
+				DirectoryCopy(subdir.FullName, temppath);
+			}
 		}
 
 		/// <summary>
@@ -823,7 +894,8 @@ namespace NugetForUnity
 
 			if (deleteDependencies)
 			{
-				foreach (var dependency in foundPackage.Dependencies)
+				var frameworkGroup = GetBestDependencyFrameworkGroupForCurrentSettings(foundPackage);
+				foreach (var dependency in frameworkGroup.Dependencies)
 				{
 					var actualData = PackagesConfigFile.Packages.Find(pkg => pkg.Id == dependency.Id);
 					if (actualData == null || actualData.IsManuallyInstalled) continue;
@@ -831,7 +903,8 @@ namespace NugetForUnity
 					var hasMoreParents = false;
 					foreach (var pkg in installedPackages.Values)
 					{
-						foreach (var dep in pkg.Dependencies)
+						var defFrameworkGroup = GetBestDependencyFrameworkGroupForCurrentSettings(pkg);
+						foreach (var dep in defFrameworkGroup.Dependencies)
 						{
 							if (dep.Id != dependency.Id) continue;
 							hasMoreParents = true;
@@ -991,16 +1064,21 @@ namespace NugetForUnity
 		/// <param name="numberToSkip">The number of packages to skip before fetching.</param>
 		/// <returns>The list of available packages.</returns>
 		public static List<NugetPackage> Search(string searchTerm = "", bool includeAllVersions = false, bool includePrerelease = false,
-												int numberToGet = 15, int numberToSkip = 0, int firstNumberToGet = 15)
+		                                        int numberToGet = 15, int numberToSkip = 0, int firstNumberToGet = 15)
 		{
 			var packages = new List<NugetPackage>();
+			var packagesSet = new HashSet<NugetPackage>();
 
 			// Loop through all active sources and combine them into a single list
 			foreach (var source in packageSources.Where(s => s.IsEnabled))
 			{
-				var newPackages = source.Search(searchTerm, includeAllVersions, includePrerelease, source == packageSources.First() ? firstNumberToGet : numberToGet, numberToSkip);
-				packages.AddRange(newPackages);
-				packages = packages.Distinct().ToList();
+				var newPackages = source.Search(searchTerm, includeAllVersions, includePrerelease,
+				                                source == packageSources.First() ? firstNumberToGet : numberToGet, numberToSkip);
+				if (searchTerm == "") newPackages.Sort((p1, p2) => string.Compare(p1.Title, p2.Title, StringComparison.OrdinalIgnoreCase));
+				foreach (var package in newPackages)
+				{
+					if (packagesSet.Add(package)) packages.Add(package);
+				}
 			}
 
 			return packages;
@@ -1014,16 +1092,21 @@ namespace NugetForUnity
 		/// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
 		/// <returns>A list of all updates available.</returns>
 		public static List<NugetPackage> GetUpdates(ICollection<NugetPackage> packagesToUpdate, bool includePrerelease = false,
-													bool includeAllVersions = false)
+		                                            bool includeAllVersions = false)
 		{
 			var packages = new List<NugetPackage>();
+			var packagesSet = new HashSet<NugetPackage>();
 
 			// Loop through all active sources and combine them into a single list
 			foreach (var source in packageSources.Where(s => s.IsEnabled))
 			{
 				var newPackages = source.GetUpdates(packagesToUpdate, includePrerelease, includeAllVersions);
+				foreach (var package in newPackages)
+				{
+					if (packagesSet.Add(package)) packages.Add(package);
+				}
+
 				packages.AddRange(newPackages);
-				packages = packages.Distinct().ToList();
 			}
 
 			return packages;
@@ -1031,7 +1114,6 @@ namespace NugetForUnity
 
 		/// <summary>
 		/// Gets a NugetPackage from the NuGet server with the exact ID and Version given.
-		/// If an exact match isn't found, it selects the next closest version available.
 		/// </summary>
 		/// <param name="packageId">The <see cref="NugetPackageIdentifier"/> containing the ID and Version of the package to get.</param>
 		/// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
@@ -1062,24 +1144,23 @@ namespace NugetForUnity
 		/// <returns>The best <see cref="NugetPackage"/> match, if there is one, otherwise null.</returns>
 		private static NugetPackage GetInstalledPackage(NugetPackageIdentifier packageId)
 		{
-			if (installedPackages.TryGetValue(packageId.Id, out var installedPackage))
+			if (!installedPackages.TryGetValue(packageId.Id, out var installedPackage)) return null;
+			
+			if (packageId.Version != installedPackage.Version)
 			{
-				if (packageId.Version != installedPackage.Version)
+				if (packageId.InRange(installedPackage))
 				{
-					if (packageId.InRange(installedPackage))
-					{
-						LogVerbose("Requested {0} {1}, but {2} is already installed, so using that.", packageId.Id, packageId.Version, installedPackage.Version);
-					}
-					else
-					{
-						LogVerbose("Requested {0} {1}. {2} is already installed, but it is out of range.", packageId.Id, packageId.Version, installedPackage.Version);
-						installedPackage = null;
-					}
+					LogVerbose("Requested {0} {1}, but {2} is already installed, so using that.", packageId.Id, packageId.Version, installedPackage.Version);
 				}
 				else
 				{
-					LogVerbose("Found exact package already installed: {0} {1}", installedPackage.Id, installedPackage.Version);
+					LogVerbose("Requested {0} {1}. {2} is already installed, but it is out of range.", packageId.Id, packageId.Version, installedPackage.Version);
+					installedPackage = null;
 				}
+			}
+			else
+			{
+				LogVerbose("Found exact package already installed: {0} {1}", installedPackage.Id, installedPackage.Version);
 			}
 
 
@@ -1244,8 +1325,11 @@ namespace NugetForUnity
 
 				SystemProxy.DisplayProgress($"Installing {package.Id} {package.Version}", "Installing Dependencies", 0.1f);
 
-				// install all dependencies
-				foreach (var dependency in package.Dependencies)
+				// install all dependencies for target framework
+				var frameworkGroup = GetBestDependencyFrameworkGroupForCurrentSettings(package);
+				
+				LogVerbose("Installing dependencies for TargetFramework: {0}", frameworkGroup.TargetFramework);
+				foreach (var dependency in frameworkGroup.Dependencies)
 				{
 					LogVerbose("Installing Dependency: {0} {1}", dependency.Id, dependency.Version);
 
@@ -1443,7 +1527,8 @@ namespace NugetForUnity
 			const string INIT_CODE_KEY = "InitCode:";
 			const string INIT_SCENE_CODE_KEY = "SceneInitCode:";
 
-			var dependencies = package.Dependencies.Select(identifier => identifier.Id.Replace("nordeus.", "").Replace("unity.", "")).ToList();
+			var frameworkGroup = GetBestDependencyFrameworkGroupForCurrentSettings(package);
+			var dependencies = frameworkGroup.Dependencies.Select(identifier => identifier.Id.Replace("nordeus.", "").Replace("unity.", "")).ToList();
 			var uses = new List<string>();
 			var customExceptionLoggingCode = "";
 			var initCode = "";
@@ -1822,14 +1907,19 @@ namespace NugetForUnity
 		/// <returns>URI of the feed without the method and query parameters.</returns>
 		private static Uri GetTruncatedFeedUri(Uri methodUri)
 		{
-			string truncatedUriString = methodUri.GetLeftPart(UriPartial.Path);
-			int lastSeparatorIndex = truncatedUriString.LastIndexOf('/');
-			if (lastSeparatorIndex != -1)
+			var truncatedUriString = methodUri.GetLeftPart(UriPartial.Path);
+			
+			// Pull off the function if there is one
+			if (truncatedUriString.EndsWith(")"))
 			{
-				truncatedUriString = truncatedUriString.Substring(0, lastSeparatorIndex);
+				var lastSeparatorIndex = truncatedUriString.LastIndexOf('/');
+				if (lastSeparatorIndex != -1)
+				{
+					truncatedUriString = truncatedUriString.Substring(0, lastSeparatorIndex);
+				}
 			}
 
-			Uri truncatedUri = new Uri(truncatedUriString);
+			var truncatedUri = new Uri(truncatedUriString);
 			return truncatedUri;
 		}
 
