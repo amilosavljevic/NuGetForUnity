@@ -74,6 +74,11 @@ namespace NugetForUnity
 			}
 		}
 
+		public static void ReloadPackagesConfig()
+		{
+			packagesConfigFile = null;
+		}
+
 		/// <summary>
 		/// The list of <see cref="NugetPackageSource"/>s to use.
 		/// </summary>
