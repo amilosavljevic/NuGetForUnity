@@ -512,19 +512,19 @@ namespace NugetForUnity
 			return nuspec.Dependencies.FirstOrDefault(x => x.TargetFramework == bestTargetFramework) ?? new NugetFrameworkGroup();
 		}
 		
-		private struct UnityVersion : IComparable<UnityVersion>
+		private readonly struct UnityVersion : IComparable<UnityVersion>
 		{
-			public int Major;
-			public int Minor;
-			public int Revision;
-			public char Release;
-			public int Build;
+			public readonly int Major;
+			private readonly int Minor;
+			private readonly int Revision;
+			private readonly char Release;
+			private readonly int Build;
 
-			public static UnityVersion Current = new UnityVersion(SystemProxy.UnityVersion);
+			public static readonly UnityVersion Current = new UnityVersion(SystemProxy.UnityVersion);
 
-			public UnityVersion(string version)
+			private UnityVersion(string version)
 			{
-				Match match = Regex.Match(version, @"(\d+)\.(\d+)\.(\d+)([fpba])(\d+)");
+				var match = Regex.Match(version, @"(\d+)\.(\d+)\.(\d+)([fpba])(\d+)");
 				if (!match.Success) { throw new ArgumentException("Invalid unity version"); }
 
 				Major = int.Parse(match.Groups[1].Value);
@@ -534,7 +534,7 @@ namespace NugetForUnity
 				Build = int.Parse(match.Groups[5].Value);
 			}
 
-			public static int Compare(UnityVersion a, UnityVersion b)
+			private static int Compare(in UnityVersion a, in UnityVersion b)
 			{
 
 				if (a.Major < b.Major) { return -1; }

@@ -26,6 +26,7 @@
 **/.idea/**/*.iml
 **/.idea/**/codeStyles
 **/.idea/**/.name
+**/.idea/**/projectSettingsUpdater.xml
 
 #Unity3D Generated File On Crash Reports
 sysinfo.txt
