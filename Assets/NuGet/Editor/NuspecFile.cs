@@ -235,7 +235,10 @@ namespace NugetForUnity
 						group.Dependencies.Add(dependency);
 					}
 
-					nuspec.Dependencies.Add(group);
+					if (group.Dependencies.Count > 0)
+					{
+						nuspec.Dependencies.Add(group);
+					}
 				}
 
 				// Flat dependency list
@@ -251,8 +254,11 @@ namespace NugetForUnity
 						};
 						group.Dependencies.Add(dependency);
 					}
-					
-					nuspec.Dependencies.Add(group);
+
+					if (group.Dependencies.Count > 0)
+					{
+						nuspec.Dependencies.Add(group);
+					}
 				}
 			}
 
