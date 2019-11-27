@@ -1105,8 +1105,6 @@ namespace NugetForUnity
 				{
 					if (packagesSet.Add(package)) packages.Add(package);
 				}
-
-				packages.AddRange(newPackages);
 			}
 
 			return packages;
