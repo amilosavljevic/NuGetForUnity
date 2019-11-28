@@ -1093,7 +1093,8 @@ namespace NugetForUnity
 			{
 				var sourcePath = GetSourceProjPath(package);
 				if (string.IsNullOrEmpty(sourcePath)) return;
-				if (Path.GetFileName(sourcePath) == "Source") sourcePath = Path.GetDirectoryName(sourcePath);
+				var sourceFolderName = Path.GetFileName(sourcePath);
+				if (sourceFolderName == "Source" || sourceFolderName == "Editor") sourcePath = Path.GetDirectoryName(sourcePath);
 				if (string.IsNullOrEmpty(sourcePath)) return;
 
 				var sourcesDir = Path.Combine(sourcePath, "Source");
@@ -1107,6 +1108,7 @@ namespace NugetForUnity
 				}
 				
 				var spath = Path.Combine(packagePath, "Source");
+				if (!Directory.Exists(spath)) spath = Path.Combine(packagePath, "Editor");
 				if (!Directory.Exists(spath)) spath = Path.Combine(packagePath, "Content");
 				var libpath = Path.Combine(packagePath, "lib");
 				if (Directory.Exists(spath))
