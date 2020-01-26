@@ -10,10 +10,8 @@ namespace NugetForUnity
 		{
 			if (Array.IndexOf(importedAssets, "Assets/packages.config") < 0) return;
 
-			// If Any code file is changed as well then recompile will take care of everything
-			if (Array.Exists(importedAssets, s => s.EndsWith(".cs")) ||
-			    Array.Exists(deletedAssets, s => s.EndsWith(".cs")) ||
-			    Array.Exists(movedAssets, s => s.EndsWith(".cs"))) return;
+			// We used to skip this if any code file is changed as well since recompile would take care of everything
+			// but compile can fail exactly because we didn't execute Restore so we removed that.
 
 			NugetHelper.ReloadPackagesConfig();
 			NugetHelper.Restore();
