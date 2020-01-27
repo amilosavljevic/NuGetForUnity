@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace NugetForUnity
@@ -120,8 +121,10 @@ namespace NugetForUnity
 					File.SetAttributes(filepath, attributes);
 				}
 			}
-
-			packagesFile.Save(filepath);
+			using (var xw = XmlWriter.Create(filepath, new XmlWriterSettings {IndentChars = "\t", Indent = true, NewLineChars = "\n"}))
+			{
+				packagesFile.Save(xw);
+			}
 		}
 	}
 }

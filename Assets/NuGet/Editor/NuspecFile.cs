@@ -395,7 +395,7 @@ namespace NugetForUnity
 				}
 			}
 
-			using (var xw = XmlWriter.Create(filePath, new XmlWriterSettings {IndentChars = "\t", Indent = true}))
+			using (var xw = XmlWriter.Create(filePath, new XmlWriterSettings {IndentChars = "\t", Indent = true, NewLineChars = "\n"}))
 			{
 				file.Save(xw);
 			}
