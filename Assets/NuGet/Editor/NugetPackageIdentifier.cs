@@ -335,7 +335,7 @@ namespace NugetForUnity
 			{
 				var splitStringsA = versionA.Split('-');
 				versionA = splitStringsA[0];
-				var prereleaseA = string.Empty;
+				var prereleaseA = "\uFFFF";
 
 				if (splitStringsA.Length > 1)
 				{
@@ -362,7 +362,7 @@ namespace NugetForUnity
 
 				var splitStringsB = versionB.Split('-');
 				versionB = splitStringsB[0];
-				var prereleaseB = string.Empty;
+				var prereleaseB = "\uFFFF";
 
 				if (splitStringsB.Length > 1)
 				{

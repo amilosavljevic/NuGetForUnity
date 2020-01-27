@@ -38,15 +38,17 @@ namespace NugetForUnity
 		public static void PreferencesGUI()
 		{
 			EditorGUILayout.LabelField($"Version: {NuGetForUnityVersion}");
-
+			
 			var conf = NugetHelper.NugetConfigFile;
+			
+			EditorGUI.BeginChangeCheck();
 
 			conf.InstallFromCache = EditorGUILayout.Toggle("Install From the Cache", conf.InstallFromCache);
 
 			conf.ReadOnlyPackageFiles = EditorGUILayout.Toggle("Read-Only Package Files", conf.ReadOnlyPackageFiles);
 
 			conf.Verbose = EditorGUILayout.Toggle("Use Verbose Logging", conf.Verbose);
-
+			
 			conf.SavedRepositoryPath = EditorGUILayout.TextField("Packages Directory", conf.SavedRepositoryPath);
 
 			conf.AllowUninstallAll = EditorGUILayout.Toggle("Allow Uninstall All", conf.AllowUninstallAll);
@@ -75,7 +77,10 @@ namespace NugetForUnity
 						EditorGUILayout.BeginVertical();
 						{
 							source.Name = EditorGUILayout.TextField(source.Name);
+
+							EditorGUI.BeginChangeCheck();
 							source.SavedPath = EditorGUILayout.TextField(source.SavedPath);
+							if (EditorGUI.EndChangeCheck()) source.SavedPath = source.SavedPath.Trim();
 						}
 						EditorGUILayout.EndVertical();
 					}
@@ -130,6 +135,7 @@ namespace NugetForUnity
 				{
 					conf.PackageSources[index] = conf.PackageSources[index - 1];
 					conf.PackageSources[index - 1] = sourceToMoveUp;
+					GUI.changed = true;
 				}
 			}
 
@@ -140,22 +146,32 @@ namespace NugetForUnity
 				{
 					conf.PackageSources[index] = conf.PackageSources[index + 1];
 					conf.PackageSources[index + 1] = sourceToMoveDown;
+					GUI.changed = true;
 				}
 			}
 
 			if (sourceToRemove != null)
 			{
 				conf.PackageSources.Remove(sourceToRemove);
+				GUI.changed = true;
 			}
 
 			if (GUILayout.Button("Add New Source"))
 			{
 				conf.PackageSources.Add(new NugetPackageSource("New Source", "source_path"));
+				GUI.changed = true;
 			}
 
 			EditorGUILayout.EndScrollView();
 
-			if (GUILayout.Button("Save"))
+			if (GUILayout.Button("Reset To Default"))
+			{
+				NugetConfigFile.CreateDefaultFile(NugetHelper.NugetConfigFilePath);
+				NugetHelper.ForceReloadNugetConfig();
+				GUI.changed = true;
+			}
+
+			if (EditorGUI.EndChangeCheck())
 			{
 				conf.Save(NugetHelper.NugetConfigFilePath);
 			}
