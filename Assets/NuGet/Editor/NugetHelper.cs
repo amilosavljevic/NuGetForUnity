@@ -157,7 +157,7 @@ namespace NugetForUnity
 			{
 				if (readingSources)
 				{
-					if (arg.StartsWith("-"))
+					if (arg.StartsWith("-", StringComparison.Ordinal))
 					{
 						readingSources = false;
 					}
@@ -346,7 +346,8 @@ namespace NugetForUnity
 				// go through the library folders in descending order (highest to lowest version)
 				var libDirectories = Directory.GetDirectories(packageInstallDirectory + "/lib").Select(s => new DirectoryInfo(s)).ToList();
 
-				if (libDirectories.Count == 1 && (libDirectories[0].Name.StartsWith("net") || libDirectories[0].Name.StartsWith("unity")))
+				if (libDirectories.Count == 1 && (libDirectories[0].Name.StartsWith("net", StringComparison.Ordinal)
+				                                  || libDirectories[0].Name.StartsWith("unity", StringComparison.Ordinal)))
 				{
 					// If there is only one folder we will leave it no matter what it is
 					selectedDirectories.Add(libDirectories[0].FullName);
@@ -826,20 +827,26 @@ namespace NugetForUnity
 
 			var initCs = LoadInitClassFile("AppInitializer.cs");
 			var generatedInitCs = LoadInitClassFile("AppInitializer.Generated.cs");
+			var editorCs = LoadInitClassFile("EditorAppInitializer.cs");
+			
+			var editorInitPath = Path.Combine(SystemProxy.CurrentDir, "Editor/EditorAppInitializer.cs");
 
-			if (initCs != null && generatedInitCs != null)
+			if (initCs != null && generatedInitCs != null && editorCs != null)
 			{
 				// We guarantee Windows line breaks
 				var newLinesRegex = new Regex(@"\r\n?|\n");
 
 				initCs = newLinesRegex.Replace(initCs, "\r\n");
 				generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
+				editorCs = newLinesRegex.Replace(editorCs, "\r\n");
 
 				// Make sure the dir exists
 				Directory.CreateDirectory(initCsDir);
+				Directory.CreateDirectory(Path.GetDirectoryName(editorInitPath));
 
 				File.WriteAllText(initCsPath, initCs);
 				File.WriteAllText(generatedInitCsPath, generatedInitCs);
+				File.WriteAllText(editorInitPath, editorCs);
 
 			}
 
@@ -1492,12 +1499,14 @@ namespace NugetForUnity
 			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
 			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
 			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
-
+			var editorCsDir = Path.Combine(SystemProxy.CurrentDir, "Editor");
+			var editorCsPath = Path.Combine(editorCsDir, "EditorAppInitializer.cs");
 
 			var initCs = LoadInitClassFile(initCsPath, "AppInitializer.cs");
 			var generatedInitCs = LoadInitClassFile(generatedInitCsPath, "AppInitializer.Generated.cs");
+			var editorCs = LoadInitClassFile(editorCsPath, "EditorAppInitializer.cs");
 
-			if (initCs == null || generatedInitCs == null) return;
+			if (initCs == null || generatedInitCs == null || editorCs == null) return;
 
 			var initMethodName = PackageIdToMethodName(package.Id);
 			// If init code for this package already exists skip injection
@@ -1508,6 +1517,7 @@ namespace NugetForUnity
 
 			initCs = newLinesRegex.Replace(initCs, "\r\n");
 			generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
+			editorCs = newLinesRegex.Replace(editorCs, "\r\n");
 
 			var initTemplate = File.ReadAllLines(initTemplatePath);
 
@@ -1518,24 +1528,30 @@ namespace NugetForUnity
 			// {...}
 			// InitCode:|SceneInitCode: <this is the only required section>
 			// {...}
+			// EditInitCode:
+			// {...}
 
 			const string INIT_DEPENDENCIES_KEY = "InitDependencies:";
 			const string USES_KEY = "Uses:";
+			const string EDITOR_USES_KEY = "EditorUses:";
 			const string CUSTOM_EXCEPTION_LOGGING_KEY = "CustomExceptionLogging:";
 			const string INIT_CODE_KEY = "InitCode:";
 			const string INIT_SCENE_CODE_KEY = "SceneInitCode:";
+			const string EDITOR_INIT_CODE_KEY = "EditorInitCode:";
 
 			var frameworkGroup = GetBestDependencyFrameworkGroupForCurrentSettings(package);
 			var dependencies = frameworkGroup.Dependencies.Select(identifier => identifier.Id.Replace("nordeus.", "").Replace("unity.", "")).ToList();
 			var uses = new List<string>();
+			var editorUses = new List<string>();
 			var customExceptionLoggingCode = "";
 			var initCode = "";
+			var editorInitCode = "";
 
 			var line = 0;
 			var initSceneCodeFound = false;
 			for (; line < initTemplate.Length; line++)
 			{
-				if (initTemplate[line].StartsWith(INIT_DEPENDENCIES_KEY))
+				if (initTemplate[line].StartsWith(INIT_DEPENDENCIES_KEY, StringComparison.Ordinal))
 				{
 					var additionalDeps = initTemplate[line].Substring(INIT_DEPENDENCIES_KEY.Length).Split(new []{','}, StringSplitOptions.RemoveEmptyEntries);
 					foreach (var additionalDep in additionalDeps)
@@ -1545,7 +1561,7 @@ namespace NugetForUnity
 					continue;
 				}
 
-				if (initTemplate[line].StartsWith(USES_KEY))
+				if (initTemplate[line].StartsWith(USES_KEY, StringComparison.Ordinal))
 				{
 					var useModules = initTemplate[line].Substring(USES_KEY.Length).Split(new []{','}, StringSplitOptions.RemoveEmptyEntries);
 					foreach (var useModule in useModules)
@@ -1555,10 +1571,20 @@ namespace NugetForUnity
 					continue;
 				}
 
-				if (initTemplate[line].StartsWith(CUSTOM_EXCEPTION_LOGGING_KEY))
+				if (initTemplate[line].StartsWith(EDITOR_USES_KEY, StringComparison.Ordinal))
+				{
+					var useModules = initTemplate[line].Substring(EDITOR_USES_KEY.Length).Split(new []{','}, StringSplitOptions.RemoveEmptyEntries);
+					foreach (var useModule in useModules)
+					{
+						editorUses.Add(useModule.Trim());
+					}
+					continue;
+				}
+
+				if (initTemplate[line].StartsWith(CUSTOM_EXCEPTION_LOGGING_KEY, StringComparison.Ordinal))
 				{
 					line++;
-					while (line + 1 < initTemplate.Length && !initTemplate[line + 1].StartsWith("}"))
+					while (line + 1 < initTemplate.Length && !initTemplate[line + 1].StartsWith("}", StringComparison.Ordinal))
 					{
 						line++;
 						customExceptionLoggingCode += "\t\t" + initTemplate[line] + "\r\n";
@@ -1566,16 +1592,29 @@ namespace NugetForUnity
 					continue;
 				}
 
-				var initCodeFound = initTemplate[line].StartsWith(INIT_CODE_KEY);
-				initSceneCodeFound = initTemplate[line].StartsWith(INIT_SCENE_CODE_KEY);
+				if (initTemplate[line].StartsWith(EDITOR_INIT_CODE_KEY, StringComparison.Ordinal))
+				{
+					line += 3; // We want to skip first and last line containing only braces
+					while (line < initTemplate.Length)
+					{
+						editorInitCode += "\t\t" + initTemplate[line - 1] + "\r\n";
+						line++;
+					}
+					continue;
+				}
+
+				var initCodeFound = initTemplate[line].StartsWith(INIT_CODE_KEY, StringComparison.Ordinal);
+				initSceneCodeFound = initTemplate[line].StartsWith(INIT_SCENE_CODE_KEY, StringComparison.Ordinal);
 				if (initCodeFound || initSceneCodeFound)
 				{
 					line++;
-					while (line < initTemplate.Length)
+					while (line < initTemplate.Length && !initTemplate[line].Contains(EDITOR_INIT_CODE_KEY))
 					{
 						initCode += "\t\t" + initTemplate[line] + "\r\n";
 						line++;
 					}
+
+					if (line < initTemplate.Length) line--;
 				}
 			}
 
@@ -1627,6 +1666,35 @@ namespace NugetForUnity
 
 			File.WriteAllText(initCsPath, initCs);
 			File.WriteAllText(generatedInitCsPath, generatedInitCs);
+
+			if (editorInitCode.Length == 0) return;
+			
+			foreach (var editorUse in editorUses)
+			{
+				var usingLine = "using " + editorUse + ";";
+				if (editorCs.Contains(usingLine)) continue;
+				editorCs = usingLine + "\r\n" + editorCs;
+			}
+
+			var braceCount = 0;
+			int n;
+			for (n = editorCs.Length - 1; n > 0; n--)
+			{
+				if (editorCs[n] != '}') continue;
+				braceCount++;
+				if (braceCount == 3) break;
+			}
+
+			if (braceCount != 3)
+			{
+				SystemProxy.LogError($"Invalid format of EditorAppInitializer.cs. Can't insert following code:\n{editorInitCode}");
+			}
+
+			while (n > 0 && editorCs[n] != '\n') n--;
+			n++;
+			editorCs = editorCs.Substring(0, n) + editorInitCode + editorCs.Substring(n);
+			Directory.CreateDirectory(editorCsDir);
+			File.WriteAllText(editorCsPath, editorCs);
 		}
 
 		private struct AuthenticatedFeed

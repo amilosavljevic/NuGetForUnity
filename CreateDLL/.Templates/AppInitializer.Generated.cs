@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading;
 using JetBrains.Annotations;
 using UnityEngine;
@@ -125,6 +126,16 @@ namespace Nordeus.Initialization
 			try
 			{
 				DoNonSceneInits();
+				
+#if UNITY_EDITOR
+				var editorAssembly = Assembly.Load("Assembly-CSharp-Editor");
+				var editorInitializer = editorAssembly.GetType("Initialization.EditorAppInitializer");
+				if (editorInitializer != null)
+				{
+					var initMethod = editorInitializer.GetMethod("InitEditStuff", BindingFlags.Static | BindingFlags.Public);
+					initMethod?.Invoke(null, null);
+				}
+#endif
 			}
 			catch (Exception e)
 			{

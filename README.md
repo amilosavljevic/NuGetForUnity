@@ -103,8 +103,12 @@ InitCode:|SceneInitCode: <this is the only required section>
 {
 	...
 }
+EditInitCode:
+{
+	...
+}
 ```
-Nuget for Unity will look for `AppInitializer.cs` and `AppInitializer.Generated.cs` under `Assets/Scripts/Initialization/`. If they don't exist they will be created with the default content. The Generated file contains Unity initialization logic and calls to specific packages initialization code. The calls are automatically injected here and users should not modify this file. The actual initialization methods are injected in `AppInitializer.cs` and that is where users can modify how initialization is done and supply the required parameters.
+Nuget for Unity will look for `AppInitializer.cs` and `AppInitializer.Generated.cs` under `Assets/Scripts/Initialization/` and for `Assets/Editor/EditorAppInitializer.cs`. If they don't exist they will be created with the default content. The Generated file contains Unity initialization logic and calls to specific packages initialization code. The calls are automatically injected here and users should not modify this file. The actual initialization methods are injected in `AppInitializer.cs` and that is where users can modify how initialization is done and supply the required parameters.
 
 There are two ways to specify init code in `Init.template` file: `InitCode` and `SceneInitCode`. Most of the packages should use `InitCode`. `SceneInitCode` should be used only if your package needs to create Unity GameObjects on the scene in its initialization. Note that in that case it will also be initialized a bit later than packages that use `InitCode`.
 
