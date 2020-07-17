@@ -400,7 +400,7 @@ namespace NugetForUnity
 		private void UpdateUpdatePackages()
 		{
 			// get any available updates for the installed packages
-			updatePackages = NugetHelper.GetUpdates(NugetHelper.InstalledPackages, showPrereleaseUpdates, showAllUpdateVersions);
+			updatePackages = NugetHelper.GetUpdates(NugetHelper.InstalledPackages, showPrereleaseUpdates);
 			filteredUpdatePackages = updatePackages;
 
 			if (updatesSearchTerm != "Search")
@@ -498,7 +498,7 @@ namespace NugetForUnity
 			{
 				if (filteredUpdatePackages != null && filteredUpdatePackages.Count > 0)
 				{
-					DrawPackages(filteredUpdatePackages);
+					DrawPackages(filteredUpdatePackages, !showAllUpdateVersions);
 				}
 				else
 				{
@@ -581,7 +581,7 @@ namespace NugetForUnity
 			EditorGUILayout.EndScrollView();
 		}
 
-		private void DrawPackages(List<NugetPackage> packages)
+		private void DrawPackages(List<NugetPackage> packages, bool compoundVersionsToReleaseLogs = false)
 		{
 			var backgroundStyle = GetBackgroundStyle();
 			var contrastStyle = GetContrastStyle();
@@ -590,7 +590,23 @@ namespace NugetForUnity
 			{
 				using (new EditorGUILayout.VerticalScope(backgroundStyle))
 				{
-					DrawPackage(packages[i], backgroundStyle, contrastStyle);
+					var package = packages[i];
+					StringBuilder releaseNotes = null;
+					if (compoundVersionsToReleaseLogs && i < packages.Count - 1 && packages[i+1].Id == package.Id)
+					{
+						releaseNotes = new StringBuilder();
+						var lastNotes = package.ReleaseNotes;
+						releaseNotes.Append("Release Notes ").Append(package.Version).Append(": ").Append(lastNotes);
+						for (i++; i < packages.Count && packages[i].Id == package.Id; i++)
+						{
+							if (packages[i].ReleaseNotes == lastNotes) continue;
+							lastNotes = packages[i].ReleaseNotes;
+							releaseNotes.Append("\n").Append("Release Notes ").Append(packages[i].Version).Append(": ").Append(lastNotes);
+						}
+
+						i--;
+					}
+					DrawPackage(package, backgroundStyle, contrastStyle, releaseNotes?.ToString());
 				}
 
 				// swap styles
@@ -742,12 +758,7 @@ namespace NugetForUnity
 			{
 				using (new EditorGUILayout.HorizontalScope())
 				{
-					var showAllVersionsTemp = EditorGUILayout.Toggle("Show All Versions", showAllUpdateVersions);
-					if (showAllVersionsTemp != showAllUpdateVersions)
-					{
-						showAllUpdateVersions = showAllVersionsTemp;
-						UpdateUpdatePackages();
-					}
+					showAllUpdateVersions = EditorGUILayout.Toggle("Show All Versions", showAllUpdateVersions);
 
 					if (GUILayout.Button("Install All Updates", GUILayout.Width(150)))
 					{
@@ -801,7 +812,7 @@ namespace NugetForUnity
 		/// Draws the given <see cref="NugetPackage"/>.
 		/// </summary>
 		/// <param name="package">The <see cref="NugetPackage"/> to draw.</param>
-		private void DrawPackage(NugetPackage package, GUIStyle packageStyle, GUIStyle contrastStyle)
+		private void DrawPackage(NugetPackage package, GUIStyle packageStyle, GUIStyle contrastStyle, string releaseNotes)
 		{
 			var installedPackages = NugetHelper.InstalledPackages;
 			var installed = installedPackages.FirstOrDefault(p => p.Id == package.Id);
@@ -921,7 +932,7 @@ namespace NugetForUnity
 					if (!string.IsNullOrEmpty(package.ReleaseNotes))
 					{
 						EditorStyles.label.wordWrap = true;
-						EditorGUILayout.LabelField($"Release Notes: {package.ReleaseNotes}");
+						EditorGUILayout.LabelField(releaseNotes ?? $"Release Notes: {package.ReleaseNotes}");
 					}
 
 					// Show the dependencies

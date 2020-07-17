@@ -1098,7 +1098,7 @@ namespace NugetForUnity
 		/// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
 		/// <returns>A list of all updates available.</returns>
 		public static List<NugetPackage> GetUpdates(ICollection<NugetPackage> packagesToUpdate, bool includePrerelease = false,
-		                                            bool includeAllVersions = false)
+		                                            bool includeAllVersions = true)
 		{
 			var packages = new List<NugetPackage>();
 			var packagesSet = new HashSet<NugetPackage>();
