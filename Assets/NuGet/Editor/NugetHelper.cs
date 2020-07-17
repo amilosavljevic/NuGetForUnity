@@ -1116,6 +1116,9 @@ namespace NugetForUnity
 			return packages;
 		}
 
+		private static NugetPackageIdentifier lastSpecificPackageId;
+		private static NugetPackage lastSpecificPackage;
+
 		/// <summary>
 		/// Gets a NugetPackage from the NuGet server with the exact ID and Version given.
 		/// </summary>
@@ -1123,6 +1126,11 @@ namespace NugetForUnity
 		/// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
 		private static NugetPackage GetSpecificPackage(NugetPackageIdentifier packageId)
 		{
+			if (lastSpecificPackage != null && lastSpecificPackage != null && lastSpecificPackageId == packageId)
+			{
+				return lastSpecificPackage;
+			}
+			
 			// First look to see if the package is already installed
 			var package = GetInstalledPackage(packageId);
 
@@ -1137,6 +1145,9 @@ namespace NugetForUnity
 				// It's not in the cache, so we need to look in the active sources
 				package = GetOnlinePackage(packageId);
 			}
+
+			lastSpecificPackageId = packageId;
+			lastSpecificPackage = package;
 
 			return package;
 		}
@@ -1154,7 +1165,16 @@ namespace NugetForUnity
 			{
 				if (packageId.InRange(installedPackage))
 				{
-					LogVerbose("Requested {0} {1}, but {2} is already installed, so using that.", packageId.Id, packageId.Version, installedPackage.Version);
+					var configPackage = PackagesConfigFile.Packages.Find(p => p.Id == packageId.Id);
+					if (configPackage != null && configPackage < installedPackage)
+					{
+						LogVerbose("Requested {0} {1}. {2} is already installed, but config demands lower version.", packageId.Id, packageId.Version, installedPackage.Version);
+						installedPackage = null;
+					}
+					else
+					{
+						LogVerbose("Requested {0} {1}, but {2} is already installed, so using that.", packageId.Id, packageId.Version, installedPackage.Version);
+					}
 				}
 				else
 				{
@@ -1308,6 +1328,13 @@ namespace NugetForUnity
 				}
 				if (installedPackage > package)
 				{
+					var configPackage = PackagesConfigFile.Packages.Find(identifier => identifier.Id == package.Id);
+					if (configPackage != null && configPackage < installedPackage)
+					{
+						LogVerbose("{0} {1} is installed but config needs {2} so downgrading.", installedPackage.Id,
+						           installedPackage.Version, package.Version);
+						return Update(installedPackage, package, false);
+					}
 					LogVerbose("{0} {1} is installed. {2} or greater is needed, so using installed version.", installedPackage.Id,
 								installedPackage.Version, package.Version);
 				}
@@ -1830,28 +1857,18 @@ namespace NugetForUnity
 				return;
 
 			var directories = Directory.GetDirectories(NugetConfigFile.RepositoryPath, "*", SearchOption.TopDirectoryOnly);
+			var packageNames = new HashSet<string>(PackagesConfigFile.Packages.Select(package => $"{package.Id}.{package.Version}"));
 			foreach (var folder in directories)
 			{
-				var name = Path.GetFileName(folder);
-				if (!string.IsNullOrEmpty(name) && name[0] == '.') continue;
-				var installed = false;
-				foreach (var package in PackagesConfigFile.Packages)
-				{
-					var packageName = $"{package.Id}.{package.Version}";
-					if (name == packageName)
-					{
-						installed = true;
-						break;
-					}
-				}
+				var dirName = Path.GetFileName(folder);
+				if (!string.IsNullOrEmpty(dirName) && dirName[0] == '.') continue;
 
-				if (!installed)
-				{
-					LogVerbose("---DELETE unnecessary package {0}", name);
+				if (packageNames.Contains(dirName)) continue;
+				
+				LogVerbose("---DELETE unnecessary package {0}", dirName);
 
-					DeleteDirectory(folder);
-					DeleteFile(folder + ".meta");
-				}
+				DeleteDirectory(folder);
+				DeleteFile(folder + ".meta");
 			}
 
 		}
