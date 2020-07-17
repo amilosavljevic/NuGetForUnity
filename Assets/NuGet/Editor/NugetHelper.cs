@@ -346,8 +346,7 @@ namespace NugetForUnity
 				// go through the library folders in descending order (highest to lowest version)
 				var libDirectories = Directory.GetDirectories(packageInstallDirectory + "/lib").Select(s => new DirectoryInfo(s)).ToList();
 
-				if (libDirectories.Count == 1 && (libDirectories[0].Name.StartsWith("net", StringComparison.Ordinal)
-				                                  || libDirectories[0].Name.StartsWith("unity", StringComparison.Ordinal)))
+				if (libDirectories.Count == 1)
 				{
 					// If there is only one folder we will leave it no matter what it is
 					selectedDirectories.Add(libDirectories[0].FullName);
