@@ -66,6 +66,7 @@ namespace NugetForUnity
 
 		public static void DownloadAndSetIcon(NugetPackage package, string url)
 		{
+			if (!NugetWindow.IsOpened) return;
 			StartCoroutine(DownloadAndSetIconRoutine(package, url));
 		}
 

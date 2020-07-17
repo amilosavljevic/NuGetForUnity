@@ -19,6 +19,8 @@ namespace NugetForUnity
 	public class NugetWindow : EditorWindow
 	{
 		private const string url = "https://github.com/Nordeus/NuGetForUnity/releases";
+		
+		public static bool IsOpened { get; private set; }
 
 		/// <summary>
 		/// True when the NugetWindow has initialized. This is used to skip time-consuming reloading operations when the assembly is reloaded.
@@ -315,7 +317,13 @@ namespace NugetForUnity
 		[UsedImplicitly]
 		private void OnEnable()
 		{
+			IsOpened = true;
 			Refresh(false);
+		}
+
+		private void OnDisable()
+		{
+			IsOpened = false;
 		}
 
 		private void Refresh(bool forceFullRefresh)
