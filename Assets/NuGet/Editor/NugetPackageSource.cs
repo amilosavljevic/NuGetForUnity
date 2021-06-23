@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Xml.Linq;
-using UnityEngine;
 
 namespace NugetForUnity
 {
@@ -195,7 +194,7 @@ namespace NugetForUnity
 				}
 				catch (Exception e)
 				{
-					Debug.LogError($"Unable to retrieve package from {url}\n{e}");
+					SystemProxy.LogError($"Unable to retrieve package from {url}\n{e}");
 					return null;
 				}
 			}
