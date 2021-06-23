@@ -92,3 +92,5 @@ crashlytics-build.properties
 /Packager/NuGetForUnity.unitypackage.log
 *.csproj.user
 nugetfu.exe
+*/.idea/*
+.idea/*
