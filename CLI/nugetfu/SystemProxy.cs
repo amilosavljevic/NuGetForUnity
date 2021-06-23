@@ -6,6 +6,8 @@ namespace NugetForUnity
 	public static class SystemProxy
 	{
 		public static string CurrentDir => Directory.GetCurrentDirectory();
+		
+		public static string AppDir => Directory.GetCurrentDirectory();
 
 		public static void Log(string message)
 		{

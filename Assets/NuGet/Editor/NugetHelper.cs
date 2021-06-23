@@ -8,7 +8,6 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Nordeus.Nuget.Utility;
-using UnityEditor;
 
 namespace NugetForUnity
 {
@@ -531,7 +530,7 @@ namespace NugetForUnity
 
 		private static string[] GetAllLookupPaths()
 		{
-			var executablePath = EditorApplication.applicationPath;
+			var executablePath = SystemProxy.AppDir;
 			var roots = new[] {
 				// MacOS directory layout
 				Path.Combine(executablePath, "Contents"),
