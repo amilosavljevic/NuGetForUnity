@@ -6,7 +6,7 @@ namespace NugetForUnity
 	public class UnityAssetProcessor: AssetPostprocessor
 	{
 		private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets,
-		                                           string[] movedFromAssetPaths)
+												   string[] movedFromAssetPaths)
 		{
 			if (Array.IndexOf(importedAssets, "Assets/packages.config") < 0) return;
 

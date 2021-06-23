@@ -404,13 +404,13 @@ namespace NugetForUnity
 		private static string ConvertFromNupkgTargetFrameworkName(string targetFramework)
 		{
 			var convertedTargetFramework = targetFramework
-			                               .ToLower()
-			                               .Replace(".netstandard", "netstandard")
-			                               .Replace("native0.0", "native");
+										   .ToLower()
+										   .Replace(".netstandard", "netstandard")
+										   .Replace("native0.0", "native");
 
 			convertedTargetFramework = convertedTargetFramework.StartsWith(".netframework") ?
-				                           convertedTargetFramework.Replace(".netframework", "net").Replace(".", "") :
-				                           convertedTargetFramework;
+										   convertedTargetFramework.Replace(".netframework", "net").Replace(".", "") :
+										   convertedTargetFramework;
 
 			return convertedTargetFramework;
 		}

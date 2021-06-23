@@ -301,6 +301,11 @@ namespace NugetForUnity
 		}
 
 		/// <summary>
+		private static bool FrameworkNamesAreEqual(string tfm1, string tfm2)
+		{
+			return tfm1.Equals(tfm2, StringComparison.InvariantCultureIgnoreCase);
+		}
+
 		/// Cleans up a package after it has been installed.
 		/// Since we are in Unity, we can make certain assumptions on which files will NOT be used, so we can delete them.
 		/// </summary>
@@ -354,14 +359,16 @@ namespace NugetForUnity
 				else
 				{
 					var targetFrameworks = libDirectories.Select(x => x.Name.ToLower());
+					bool isAlreadyImported = IsAlreadyImportedInEngine(package);
 					var bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
-					if (bestTargetFramework != null)
+					if (!isAlreadyImported && (bestTargetFramework != null))
 					{
-						var bestLibDirectory = libDirectories.First(x => x.Name.ToLower() == bestTargetFramework);
+						DirectoryInfo bestLibDirectory = libDirectories
+							.First(x => FrameworkNamesAreEqual(x.Name, bestTargetFramework));.First(x => FrameworkNamesAreEqual(x.Name, bestTargetFramework));
 
 						if (bestTargetFramework == "unity" ||
-						    bestTargetFramework == "net35-unity full v3.5" ||
-						    bestTargetFramework == "net35-unity subset v3.5")
+							bestTargetFramework == "net35-unity full v3.5" ||
+							bestTargetFramework == "net35-unity subset v3.5")
 						{
 							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "unity"));
 							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity full v3.5"));
@@ -383,7 +390,7 @@ namespace NugetForUnity
 				foreach (var directory in libDirectories)
 				{
 					var validDirectory = selectedDirectories
-					                      .Any(d => string.Compare(d, directory.FullName, StringComparison.CurrentCultureIgnoreCase) == 0);
+										  .Any(d => string.Compare(d, directory.FullName, StringComparison.CurrentCultureIgnoreCase) == 0);
 					if (!validDirectory)
 					{
 						DeleteDirectory(directory.FullName);
@@ -496,20 +503,69 @@ namespace NugetForUnity
 			}
 		}
 		
+		private static bool IsAlreadyImportedInEngine(NugetPackageIdentifier package)
+		{
+			HashSet<string> alreadyImportedLibs = GetAlreadyImportedLibs();
+			bool isAlreadyImported = alreadyImportedLibs.Contains(package.Id);
+			LogVerbose("Is package '{0}' already imported? {1}", package.Id, isAlreadyImported);
+			return isAlreadyImported;
+		}
+
+		private static HashSet<string> alreadyImportedLibs = null;
+		private static HashSet<string> GetAlreadyImportedLibs()
+		{
+			if (alreadyImportedLibs == null)
+			{
+				string[] lookupPaths = GetAllLookupPaths();
+				IEnumerable<string> libNames = lookupPaths
+					.SelectMany(directory => Directory.EnumerateFiles(directory, "*.dll", SearchOption.AllDirectories))
+					.Select(Path.GetFileName)
+					.Select(p => Path.ChangeExtension(p, null));
+				alreadyImportedLibs = new HashSet<string>(libNames);
+				LogVerbose("Already imported libs: {0}", string.Join(", ", alreadyImportedLibs));
+			}
+
+			return alreadyImportedLibs;
+		}
+
+		private static string[] GetAllLookupPaths()
+		{
+			var executablePath = EditorApplication.applicationPath;
+			var roots = new[] {
+				// MacOS directory layout
+				Path.Combine(executablePath, "Contents"),
+				// Windows directory layout
+				Path.Combine(Directory.GetParent(executablePath).FullName, "Data")
+			};
+			var relativePaths = new[] {
+				Path.Combine("NetStandard",	 "compat"),
+				Path.Combine("MonoBleedingEdge", "lib", "mono")
+			};
+			var allPossiblePaths = roots
+				.SelectMany(root => relativePaths
+					.Select(relativePath => Path.Combine(root, relativePath)));
+			var existingPaths = allPossiblePaths
+				.Where(Directory.Exists)
+				.ToArray();
+			LogVerbose("All existing path to dependency lookup are: {0}", string.Join(", ", existingPaths));
+			return existingPaths;
+		}
+
 		public static NugetFrameworkGroup GetBestDependencyFrameworkGroupForCurrentSettings(NugetPackage package)
 		{
 			var targetFrameworks = package.Dependencies.Select(x => x.TargetFramework);
-
-			var bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
-			return package.Dependencies.FirstOrDefault(x => x.TargetFramework == bestTargetFramework) ?? new NugetFrameworkGroup();
+			string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);		string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);		
+			return package.Dependenciesreturn package.Dependencies
+				.FirstOrDefault(x => FrameworkNamesAreEqual(x.TargetFramework, bestTargetFramework)) ?? new NugetFrameworkGroup();
 		}
 
 		public static NugetFrameworkGroup GetBestDependencyFrameworkGroupForCurrentSettings(NuspecFile nuspec)
 		{
 			var targetFrameworks = nuspec.Dependencies.Select(x => x.TargetFramework);
 
-			var bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
-			return nuspec.Dependencies.FirstOrDefault(x => x.TargetFramework == bestTargetFramework) ?? new NugetFrameworkGroup();
+			string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
+			return nuspec.Dependencies
+				.FirstOrDefault(x => FrameworkNamesAreEqual(x.TargetFramework, bestTargetFramework)) ?? new NugetFrameworkGroup();
 		}
 		
 		private readonly struct UnityVersion : IComparable<UnityVersion>
@@ -563,14 +619,11 @@ namespace NugetForUnity
 
 		private struct PriorityFramework { public int Priority; public string Framework; }
 		private static readonly string[] unityFrameworks = {"unity"};
-		private static readonly string[] netStandardFrameworks =
-		{
-			"netstandard2.0", "netstandard1.6", "netstandard1.5", "netstandard1.4", "netstandard1.3", "netstandard1.2", "netstandard1.1",
-			"netstandard1.0"
-		};
+		private static readonly string[] netStandardFrameworks = {
+			"netstandard20", "netstandard16", "netstandard15", "netstandard14", "netstandard13", "netstandard12", "netstandard11", "netstandard10" };
+		
 		private static readonly string[] net4Unity2018Frameworks = {"net471", "net47"};
-		private static readonly string[] net4Unity2017Frameworks =
-			{"net462", "net461", "net46", "net452", "net451", "net45", "net403", "net40", "net4"};
+		private static readonly string[] net4Unity2017Frameworks = {"net462", "net461", "net46", "net452", "net451", "net45", "net403", "net40", "net4"};
 		private static readonly string[] net3Frameworks = {"net35-unity full v3.5", "net35-unity subset v3.5", "net35", "net20", "net11"};
 		private static readonly string[] defaultFrameworks = {string.Empty};
 
@@ -613,7 +666,13 @@ namespace NugetForUnity
 			{
 				for (var i = 0; i < frameworkGroups.Count; ++i)
 				{
-					var index = Array.IndexOf(frameworkGroups[i], tfm);
+					int index = Array.FindIndex(frameworkGroups[i], test =>
+					{
+						if (test.Equals(tfm, StringComparison.InvariantCultureIgnoreCase)) { return true; }
+						if (test.Equals(tfm.Replace(".", string.Empty), StringComparison.InvariantCultureIgnoreCase)) { return true; }
+						return false;
+					});
+
 					if (index >= 0)
 					{
 						return i * 1000 + index;
@@ -626,12 +685,12 @@ namespace NugetForUnity
 			// Select the highest .NET library available that is supported
 			// See here: https://docs.nuget.org/ndocs/schema/target-frameworks
 			var result = targetFrameworks
-			             .Select(tfm => new PriorityFramework {Priority = GetTfmPriority(tfm), Framework = tfm})
-			             .Where(pfm => pfm.Priority != int.MaxValue)
-			             .ToArray() // Ensure we don't search for priorities again when sorting
-			             .OrderBy(pfm => pfm.Priority)
-			             .Select(pfm => pfm.Framework)
-			             .FirstOrDefault();
+						 .Select(tfm => new PriorityFramework {Priority = GetTfmPriority(tfm), Framework = tfm})
+						 .Where(pfm => pfm.Priority != int.MaxValue)
+						 .ToArray() // Ensure we don't search for priorities again when sorting
+						 .OrderBy(pfm => pfm.Priority)
+						 .Select(pfm => pfm.Framework)
+						 .FirstOrDefault();
 
 			return result;
 		}
@@ -694,8 +753,8 @@ namespace NugetForUnity
 			if (!dir.Exists)
 			{
 				throw new DirectoryNotFoundException(
-				                                     "Source directory does not exist or could not be found: "
-				                                     + sourceDirectoryPath);
+													 "Source directory does not exist or could not be found: "
+													 + sourceDirectoryPath);
 			}
 
 			// if the destination directory doesn't exist, create it
@@ -1070,7 +1129,7 @@ namespace NugetForUnity
 		/// <param name="numberToSkip">The number of packages to skip before fetching.</param>
 		/// <returns>The list of available packages.</returns>
 		public static List<NugetPackage> Search(string searchTerm = "", bool includeAllVersions = false, bool includePrerelease = false,
-		                                        int numberToGet = 15, int numberToSkip = 0, int firstNumberToGet = 15)
+												int numberToGet = 15, int numberToSkip = 0, int firstNumberToGet = 15)
 		{
 			var packages = new List<NugetPackage>();
 			var packagesSet = new HashSet<NugetPackage>();
@@ -1079,7 +1138,7 @@ namespace NugetForUnity
 			foreach (var source in packageSources.Where(s => s.IsEnabled))
 			{
 				var newPackages = source.Search(searchTerm, includeAllVersions, includePrerelease,
-				                                source == packageSources.First() ? firstNumberToGet : numberToGet, numberToSkip);
+												source == packageSources.First() ? firstNumberToGet : numberToGet, numberToSkip);
 				if (searchTerm == "") newPackages.Sort((p1, p2) => string.Compare(p1.Title, p2.Title, StringComparison.OrdinalIgnoreCase));
 				foreach (var package in newPackages)
 				{
@@ -1098,7 +1157,7 @@ namespace NugetForUnity
 		/// <param name="includeAllVersions">True to include older versions that are not the latest version.</param>
 		/// <returns>A list of all updates available.</returns>
 		public static List<NugetPackage> GetUpdates(ICollection<NugetPackage> packagesToUpdate, bool includePrerelease = false,
-		                                            bool includeAllVersions = true)
+													bool includeAllVersions = true)
 		{
 			var packages = new List<NugetPackage>();
 			var packagesSet = new HashSet<NugetPackage>();
@@ -1284,7 +1343,13 @@ namespace NugetForUnity
 		/// <param name="refreshAssets">True to refresh the Unity asset database.  False to ignore the changes (temporarily).</param>
 		internal static bool InstallIdentifier(NugetPackageIdentifier package, bool refreshAssets = true)
 		{
-			var foundPackage = GetSpecificPackage(package);
+			if (IsAlreadyImportedInEngine(package))
+			{
+				LogVerbose("Package {0} is already imported in engine, skipping install.", package);
+				return true;
+			}
+
+			NugetPackage foundPackage = GetSpecificPackage(package);
 
 			if (foundPackage != null)
 			{
@@ -1318,6 +1383,12 @@ namespace NugetForUnity
 		/// <param name="refreshAssets">True to refresh the Unity asset database.  False to ignore the changes (temporarily).</param>
 		public static bool Install(NugetPackage package, bool refreshAssets = true)
 		{
+			if (IsAlreadyImportedInEngine(package))
+			{
+				LogVerbose("Package {0} is already imported in engine, skipping install.", package);
+				return true;
+			}
+
 			if (installedPackages.TryGetValue(package.Id, out var installedPackage))
 			{
 				if (installedPackage < package)
@@ -1332,7 +1403,7 @@ namespace NugetForUnity
 					if (configPackage != null && configPackage < installedPackage)
 					{
 						LogVerbose("{0} {1} is installed but config needs {2} so downgrading.", installedPackage.Id,
-						           installedPackage.Version, package.Version);
+								   installedPackage.Version, package.Version);
 						return Update(installedPackage, package, false);
 					}
 					LogVerbose("{0} {1} is installed. {2} or greater is needed, so using installed version.", installedPackage.Id,
@@ -1880,11 +1951,16 @@ namespace NugetForUnity
 		/// <returns>True if the given package is installed.  False if it is not.</returns>
 		internal static bool IsInstalled(NugetPackageIdentifier package)
 		{
+			if (IsAlreadyImportedInEngine(package))
+			{
+				return true;
+			}
+
 			var isInstalled = false;
 
 			if (installedPackages.TryGetValue(package.Id, out var installedPackage))
 			{
-				isInstalled = package.Version == installedPackage.Version;
+				isInstalled = package.CompareVersion(installedPackage.Version) == 0;
 			}
 
 			return isInstalled;

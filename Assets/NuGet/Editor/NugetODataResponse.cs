@@ -46,7 +46,16 @@ namespace NugetForUnity
 		{
 			var packages = new List<NugetPackage>();
 
-			var packageEntries = document.Root.Elements(XName.Get("entry", AtomNamespace));
+			IEnumerable<XElement> packageEntries;
+			if (document.Root.Name.Equals(XName.Get("entry", AtomNamespace)))
+			{
+				packageEntries = Enumerable.Repeat(document.Root, 1);
+			}
+			else
+			{
+				packageEntries = document.Root.Elements(XName.Get("entry", AtomNamespace));
+			}
+				
 			foreach (var entry in packageEntries)
 			{
 				var package = new NugetPackage
@@ -102,14 +111,14 @@ namespace NugetForUnity
 						}
 						
 						var dependency = new NugetPackageIdentifier(details[0], details[1]);
-	                     // some packages (ex: FSharp.Data - 2.1.0) have improper "semi-empty" dependencies such as:
-	                     // "Zlib.Portable:1.10.0:portable-net40+sl50+wp80+win80|::net40"
-	                     // so we need to only add valid dependencies and skip invalid ones
-	                     if (!string.IsNullOrEmpty(dependency.Id) && !string.IsNullOrEmpty(dependency.Version)
-	                                                              && dependency.Id != "NETStandard.Library")
-	                     {
-		                     group.Dependencies.Add(dependency);
-	                     }
+						 // some packages (ex: FSharp.Data - 2.1.0) have improper "semi-empty" dependencies such as:
+						 // "Zlib.Portable:1.10.0:portable-net40+sl50+wp80+win80|::net40"
+						 // so we need to only add valid dependencies and skip invalid ones
+						 if (!string.IsNullOrEmpty(dependency.Id) && !string.IsNullOrEmpty(dependency.Version)
+																  && dependency.Id != "NETStandard.Library")
+						 {
+							 group.Dependencies.Add(dependency);
+						 }
 					}
 
 					foreach (var group in dependencyGroups.Values)
