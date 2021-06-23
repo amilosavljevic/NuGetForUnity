@@ -8,6 +8,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Nordeus.Nuget.Utility;
+using UnityEditor;
 
 namespace NugetForUnity
 {
@@ -364,11 +365,11 @@ namespace NugetForUnity
 					if (!isAlreadyImported && (bestTargetFramework != null))
 					{
 						DirectoryInfo bestLibDirectory = libDirectories
-							.First(x => FrameworkNamesAreEqual(x.Name, bestTargetFramework));.First(x => FrameworkNamesAreEqual(x.Name, bestTargetFramework));
+							.First(x => FrameworkNamesAreEqual(x.Name, bestTargetFramework));
 
 						if (bestTargetFramework == "unity" ||
-							bestTargetFramework == "net35-unity full v3.5" ||
-							bestTargetFramework == "net35-unity subset v3.5")
+						    bestTargetFramework == "net35-unity full v3.5" ||
+						    bestTargetFramework == "net35-unity subset v3.5")
 						{
 							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "unity"));
 							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity full v3.5"));
@@ -554,8 +555,9 @@ namespace NugetForUnity
 		public static NugetFrameworkGroup GetBestDependencyFrameworkGroupForCurrentSettings(NugetPackage package)
 		{
 			var targetFrameworks = package.Dependencies.Select(x => x.TargetFramework);
-			string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);		string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);		
-			return package.Dependenciesreturn package.Dependencies
+			string bestTargetFramework = TryGetBestTargetFrameworkForCurrentSettings(targetFrameworks);
+			
+			return package.Dependencies
 				.FirstOrDefault(x => FrameworkNamesAreEqual(x.TargetFramework, bestTargetFramework)) ?? new NugetFrameworkGroup();
 		}
 

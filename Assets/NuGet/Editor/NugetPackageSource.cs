@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Xml.Linq;
+using UnityEngine;
 
 namespace NugetForUnity
 {
@@ -195,7 +195,7 @@ namespace NugetForUnity
 				}
 				catch (Exception e)
 				{
-					Debug.LogErrorFormat("Unable to retrieve package from {0}\n{1}", url, e.ToString());
+					Debug.LogError($"Unable to retrieve package from {url}\n{e}");
 					return null;
 				}
 			}
@@ -352,9 +352,6 @@ namespace NugetForUnity
 		{
 			NugetHelper.LogVerbose("Getting packages from: {0}", url);
 
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-
 			// Mono doesn't have a Certificate Authority, so we have to provide all validation manually.  Currently just accept anything.
 			// See here: http://stackoverflow.com/questions/4926676/mono-webrequest-fails-with-https
 
@@ -377,8 +374,7 @@ namespace NugetForUnity
 				}
 			}
 
-			stopwatch.Stop();
-			NugetHelper.LogVerbose("Retreived {0} packages in {1} ms", packages.Count, stopwatch.ElapsedMilliseconds);
+			NugetHelper.LogVerbose($"Retrieved {packages.Count} packages!");
 
 			return packages;
 		}
@@ -546,9 +542,6 @@ namespace NugetForUnity
 		/// <returns>A list of all updates available.</returns>
 		private List<NugetPackage> GetUpdatesFallback(IEnumerable<NugetPackage> installedPackages, bool includePrerelease = false, bool includeAllVersions = false)
 		{
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-
 			var updates = new List<NugetPackage>();
 			foreach (var installedPackage in installedPackages)
 			{
@@ -563,7 +556,7 @@ namespace NugetForUnity
 				updates.AddRange(packageUpdates.Skip(skip));
 			}
 
-			NugetHelper.LogVerbose("NugetPackageSource.GetUpdatesFallback took {0} ms", stopwatch.ElapsedMilliseconds);
+			NugetHelper.LogVerbose("NugetPackageSource.GetUpdatesFallback done!");
 			return updates;
 		}
 	}
