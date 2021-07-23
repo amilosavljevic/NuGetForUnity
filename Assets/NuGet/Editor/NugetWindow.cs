@@ -167,7 +167,7 @@ namespace NugetForUnity
 
 				bool Filter(NugetPackage x) => (x.IsManuallyInstalled || showAllInstalledPackages)
 												&& (x.Id.ToLower().Contains(installedSearchTerm)
-													|| x.Title.ToLower().Contains(installedSearchTerm));
+												    || x.Title.ToLower().Contains(installedSearchTerm));
 
 				filteredInstalledPackages = NugetHelper.InstalledPackages.Where(Filter).ToList();
 				lastInstalledSearchTerm = installedSearchTerm;
@@ -223,7 +223,7 @@ namespace NugetForUnity
 				string latestVersionDownloadUrl = null;
 
 				string response = null;
-				if (!request.isNetworkError && !request.isHttpError)
+				if (request.result == UnityWebRequest.Result.Success)
 				{
 					response = request.downloadHandler.text;
 				}
@@ -282,7 +282,7 @@ namespace NugetForUnity
 
 				EditorUtility.ClearProgressBar();
 
-				if (request.isNetworkError || request.isHttpError)
+				if (request.result != UnityWebRequest.Result.Success)
 				{
 					EditorUtility.DisplayDialog(
 												 "Failed update",
@@ -376,7 +376,7 @@ namespace NugetForUnity
 			}
 			catch (Exception e)
 			{
-				UnityEngine.Debug.LogErrorFormat("{0}", e.ToString());
+				UnityEngine.Debug.LogErrorFormat("{0}", e);
 			}
 			finally
 			{
@@ -567,7 +567,7 @@ namespace NugetForUnity
 
 				using (new EditorGUILayout.VerticalScope(showMoreStyle))
 				{
-					// allow the user to dislay more results
+					// allow the user to display more results
 					if (GUILayout.Button("Show More", GUILayout.Width(120)))
 					{
 						numberToSkip += numberToGet;
@@ -829,7 +829,7 @@ namespace NugetForUnity
 					const int iconSize = 32;
 					var padding = 5;
 					var rect = GUILayoutUtility.GetRect(iconSize, iconSize);
-					// only use GetRect's Y position.  It doesn't correctly set the width, height or X position.
+					// only use GetRect Y position.  It doesn't correctly set the width, height or X position.
 					rect.x = padding;
 					rect.y += 3;
 					rect.width = iconSize;
@@ -968,7 +968,7 @@ namespace NugetForUnity
 					var showCloneWindow = openCloneWindows.Contains(package);
 					cloneButtonBoxStyle.normal.background = showCloneWindow ? contrastStyle.normal.background : packageStyle.normal.background;
 
-					// Create a simillar style for the 'Clone' window
+					// Create a similar style for the 'Clone' window
 					var cloneWindowStyle = new GUIStyle(cloneButtonBoxStyle) {padding = new RectOffset(6, 6, 2, 6)};
 
 					// Show button bar

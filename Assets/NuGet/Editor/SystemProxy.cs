@@ -136,7 +136,7 @@ namespace NugetForUnity
 				request.SendWebRequest();
 				while (!request.isDone && stopwatch.ElapsedMilliseconds < timeout * 1000) yield return null;
 
-				if (request.isDone && !request.isNetworkError && !request.isHttpError)
+				if (request.isDone && request.result == UnityWebRequest.Result.Success)
 				{
 					result = DownloadHandlerTexture.GetContent(request);
 				}
