@@ -318,31 +318,16 @@ namespace NugetForUnity
 
 			FixSpaces(packageInstallDirectory);
 
-			// delete a remnant .meta file that may exist from packages created by Unity
-			DeleteFile(packageInstallDirectory + "/" + package.Id + ".nuspec.meta");
-
-			// delete directories & files that NuGet normally deletes, but since we are installing "manually" they exist
-			DeleteDirectory(packageInstallDirectory + "/_rels");
-			DeleteDirectory(packageInstallDirectory + "/package");
-			DeleteFile(packageInstallDirectory + "/" + package.Id + ".nuspec");
-			DeleteFile(packageInstallDirectory + "/[Content_Types].xml");
-
-			// Unity has no use for the build directory
-			DeleteDirectory(packageInstallDirectory + "/build");
-
-			// For now, delete src.  We may use it later...
-			DeleteDirectory(packageInstallDirectory + "/src");
-
-			// Since we don't automatically fix up the runtime dll platforms, remove them until we improve support
-			// for this newer feature of nuget packages.
-			DeleteDirectory(Path.Combine(packageInstallDirectory, "runtimes"));
-
-			// Delete documentation folders since they sometimes have HTML docs with JavaScript, which Unity tried to parse as "UnityScript"
-			DeleteDirectory(packageInstallDirectory + "/docs");
-			
-			// Delete ref folder, as it is just used for compile-time reference and does not contain implementations.
-			// Leaving it results in "assembly loading" and "multiple pre-compiled assemblies with same name" errors
-			DeleteDirectory(packageInstallDirectory + "/ref");
+			// Basic support for runtime folders. Might not work with all packages.
+			// It doesn't unpack any x86 subfolders and removes x64 suffix from native libs.
+			var runtimesDir = Path.Combine(packageInstallDirectory, "runtimes");
+			if (Directory.Exists(runtimesDir))
+			{
+				foreach (var file in Directory.EnumerateFiles(runtimesDir, "*.x??.*", SearchOption.AllDirectories))
+				{
+					if (file.Contains(".x64.")) File.Move(file, file.Replace(".x64.", "."));
+				}
+			}
 
 			if (Directory.Exists(packageInstallDirectory + "/lib"))
 			{
@@ -353,6 +338,7 @@ namespace NugetForUnity
 
 				if (libDirectories.Count == 1)
 				{
+					LogVerbose("Using the only dir {0}", libDirectories[0].FullName);
 					// If there is only one folder we will leave it no matter what it is
 					selectedDirectories.Add(libDirectories[0].FullName);
 				}
@@ -393,6 +379,7 @@ namespace NugetForUnity
 										  .Any(d => string.Compare(d, directory.FullName, StringComparison.CurrentCultureIgnoreCase) == 0);
 					if (!validDirectory)
 					{
+						LogVerbose("Deleting lib dir {0}", directory.FullName);
 						DeleteDirectory(directory.FullName);
 					}
 				}
@@ -413,9 +400,6 @@ namespace NugetForUnity
 
 				Directory.Move(packageInstallDirectory + "/tools", toolsInstallDirectory);
 			}
-
-			// delete all PDB files since Unity uses Mono and requires MDB files, which causes it to output "missing MDB" errors
-			DeleteAllFiles(packageInstallDirectory, "*.pdb");
 
 			// if there are native DLLs, copy them to the Unity project root (1 up from Assets)
 			if (Directory.Exists(packageInstallDirectory + "/output"))
@@ -1292,7 +1276,7 @@ namespace NugetForUnity
 					continue;
 				}
 
-				if (foundPackage.Version == packageId.Version)
+				if (packageId.InRange(foundPackage.Version))
 				{
 					LogVerbose("{0} {1} was found in {2}", foundPackage.Id, foundPackage.Version, source.Name);
 					return foundPackage;
@@ -1503,8 +1487,34 @@ namespace NugetForUnity
 							var destPath = Path.Combine(baseDirectory, entry.FullName);
 							// Skip entries that want to unpack somewhere outside our destination
 							if (!destPath.StartsWith(baseDirectory, StringComparison.Ordinal)) continue;
-							var dirName = Path.GetDirectoryName(destPath);
+							var normalizedPath = destPath.Replace('\\', '/');
+							
+							// Skip platform specific libs that are 32bit
+							if (normalizedPath.Contains("runtimes/") && normalizedPath.Contains("x86")) continue;
+							
+							// Skip directories & files that NuGet normally deletes plus nuspec file and src dir we don't need
+							if (normalizedPath.EndsWith($"/{package.Id}.nuspec.meta", StringComparison.Ordinal)) continue;
+							if (normalizedPath.EndsWith($"/{package.Id}.nuspec", StringComparison.Ordinal)) continue;
+							if (normalizedPath.EndsWith("/_rels", StringComparison.Ordinal) || normalizedPath.Contains("/_rels/")) continue;
+							if (normalizedPath.EndsWith("/package", StringComparison.Ordinal) || normalizedPath.Contains("/package/")) continue;
+							if (normalizedPath.EndsWith("/build", StringComparison.Ordinal) || normalizedPath.Contains("/build/")) continue;
+							if (normalizedPath.EndsWith("/src", StringComparison.Ordinal) || normalizedPath.Contains("/src/")) continue;
+							if (normalizedPath.EndsWith("/[Content_Types].xml", StringComparison.Ordinal)) continue;
+							
+							// Skip documentation folders since they sometimes have HTML docs with JavaScript, which Unity tried to parse as "UnityScript"
+							if (normalizedPath.EndsWith("/docs", StringComparison.Ordinal) || normalizedPath.Contains("/docs/")) continue;
+							
+							// Skip ref folder, as it is just used for compile-time reference and does not contain implementations.
+							// Leaving it results in "assembly loading" and "multiple pre-compiled assemblies with same name" errors
+							if (normalizedPath.EndsWith("/ref", StringComparison.Ordinal) || normalizedPath.Contains("/ref/")) continue;
+							
+							// Skip all PDB files since Unity uses Mono and requires MDB files, which causes it to output "missing MDB" errors
+							if (normalizedPath.EndsWith(".pdb", StringComparison.Ordinal)) continue;
+
+							var isDir = normalizedPath.EndsWith("/");
+							var dirName = isDir ? destPath : Path.GetDirectoryName(destPath);
 							if (dirName != null && !Directory.Exists(dirName)) Directory.CreateDirectory(dirName);
+							if (isDir) continue;
 							entry.ExtractToFile(destPath, true);
 							if (entry.FullName == "Init.template") initTemplatePath = destPath;
 							if (NugetConfigFile.ReadOnlyPackageFiles)

@@ -43,9 +43,12 @@ namespace NugetForUnity
 		/// </summary>
 		/// <param name="document">The <see cref="XDocument"/> that is the OData XML response from the NuGet server.</param>
 		/// <returns>The list of <see cref="NugetPackage"/>s read from the given XML.</returns>
-		public static List<NugetPackage> Parse(XDocument document)
+		public static List<NugetPackage> Parse(XDocument document, out string nextPageUrl)
 		{
 			var packages = new List<NugetPackage>();
+			nextPageUrl = null;
+
+			if (document.Root == null) return packages;
 
 			IEnumerable<XElement> packageEntries;
 			if (document.Root.Name.Equals(XName.Get("entry", AtomNamespace)))
@@ -56,13 +59,22 @@ namespace NugetForUnity
 			{
 				packageEntries = document.Root.Elements(XName.Get("entry", AtomNamespace));
 			}
+			
+			foreach (var links in document.Root.Elements(XName.Get("link", AtomNamespace)))
+			{
+				var attr = links.Attribute(XName.Get("rel"));
+				if (attr?.Value == "next")
+				{
+					nextPageUrl = links.Attribute(XName.Get("href"))?.Value;
+				}
+			}
 				
 			foreach (var entry in packageEntries)
 			{
 				var package = new NugetPackage
 				{
 					Id = entry.GetAtomElement("title").Value,
-					DownloadUrl = entry.GetAtomElement("content").Attribute("src").Value
+					DownloadUrl = entry.GetAtomElement("content").Attribute("src")?.Value
 				};
 
 				var entryProperties = entry.Element(XName.Get("properties", MetaDataNamespace));
@@ -116,7 +128,7 @@ namespace NugetForUnity
 						 // "Zlib.Portable:1.10.0:portable-net40+sl50+wp80+win80|::net40"
 						 // so we need to only add valid dependencies and skip invalid ones
 						 if (!string.IsNullOrEmpty(dependency.Id) && !string.IsNullOrEmpty(dependency.Version)
-																  && dependency.Id != "NETStandard.Library")
+						                                          && dependency.Id != "NETStandard.Library")
 						 {
 							 group.Dependencies.Add(dependency);
 						 }

@@ -192,6 +192,15 @@ namespace NugetForUnity
 				{
 					return GetPackagesFromUrl(url, UserName, ExpandedPassword).First();
 				}
+				catch (WebException we)
+				{
+					if (we.Response is HttpWebResponse wr && wr.StatusCode == HttpStatusCode.NotFound)
+					{
+						SystemProxy.Log($"Unable to find package from {url}\n");
+						return null;
+					}
+					throw;
+				}
 				catch (Exception e)
 				{
 					SystemProxy.LogError($"Unable to retrieve package from {url}\n{e}");
@@ -360,15 +369,20 @@ namespace NugetForUnity
 			// add anonymous handler
 			ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, policyErrors) => true;
 			
-			List<NugetPackage> packages;
-			using (var responseStream = NugetHelper.RequestUrl(url, username, password, timeOut: 5000))
+			var packages = new List<NugetPackage>();
+			var nextPageUrl = url;
+			while (nextPageUrl != null)
 			{
-				using (var streamReader = new StreamReader(responseStream))
+				using (var responseStream = NugetHelper.RequestUrl(nextPageUrl, username, password, timeOut: 5000))
 				{
-					packages = NugetODataResponse.Parse(XDocument.Load(streamReader));
-					foreach (var package in packages)
+					using (var streamReader = new StreamReader(responseStream))
 					{
-						package.PackageSource = this;
+						var newPackages = NugetODataResponse.Parse(XDocument.Load(streamReader), out nextPageUrl);
+						foreach (var package in newPackages)
+						{
+							package.PackageSource = this;
+							packages.Add(package);
+						}
 					}
 				}
 			}
