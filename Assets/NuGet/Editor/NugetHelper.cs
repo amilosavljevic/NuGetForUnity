@@ -1775,7 +1775,11 @@ namespace NugetForUnity
 			File.WriteAllText(initCsPath, initCs);
 			File.WriteAllText(generatedInitCsPath, generatedInitCs);
 
-			if (editorInitCode.Length == 0) return;
+			if (editorInitCode.Length == 0)
+			{
+				if (!File.Exists(editorCsPath)) File.WriteAllText(editorCsPath, editorCs);
+				return;
+			}
 			
 			foreach (var editorUse in editorUses)
 			{
