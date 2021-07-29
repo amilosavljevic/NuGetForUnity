@@ -808,30 +808,18 @@ namespace NugetForUnity
 		}
 
 		/// <summary>
-		/// Deletes a file at the given filepath.
+		/// Deletes a file at the given filepath. Also deletes its meta file if found.
 		/// </summary>
 		/// <param name="filePath">The filepath to the file to delete.</param>
 		private static void DeleteFile(string filePath)
 		{
-			if (File.Exists(filePath))
-			{
-				File.SetAttributes(filePath, FileAttributes.Normal);
-				File.Delete(filePath);
-			}
-		}
-
-		/// <summary>
-		/// Deletes all files in the given directory or in any sub-directory, with the given extension.
-		/// </summary>
-		/// <param name="directoryPath">The path to the directory to delete all files of the given extension from.</param>
-		/// <param name="extension">The extension of the files to delete, in the form "*.ext"</param>
-		private static void DeleteAllFiles(string directoryPath, string extension)
-		{
-			var files = Directory.GetFiles(directoryPath, extension, SearchOption.AllDirectories);
-			foreach (var file in files)
-			{
-				DeleteFile(file);
-			}
+			if (!File.Exists(filePath)) return;
+			File.SetAttributes(filePath, FileAttributes.Normal);
+			File.Delete(filePath);
+			var metaPath = filePath + ".meta";
+			if (filePath.EndsWith(".meta") || !File.Exists(metaPath)) return;
+			File.SetAttributes(metaPath, FileAttributes.Normal);
+			File.Delete(metaPath);
 		}
 		
 		private static string LoadInitClassFile(string name)
@@ -866,6 +854,7 @@ namespace NugetForUnity
 			// Reset Init files
 			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
 			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
+			var initTxtPath = Path.Combine(initCsDir, "AppInitializerOriginal.txt");
 			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
 
 			var initCs = LoadInitClassFile("AppInitializer.cs");
@@ -888,6 +877,7 @@ namespace NugetForUnity
 				Directory.CreateDirectory(Path.GetDirectoryName(editorInitPath));
 
 				File.WriteAllText(initCsPath, initCs);
+				DeleteFile(initTxtPath);
 				File.WriteAllText(generatedInitCsPath, generatedInitCs);
 				File.WriteAllText(editorInitPath, editorCs);
 
@@ -1609,28 +1599,63 @@ namespace NugetForUnity
 		{
 			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
 			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
+			var initTxtPath = Path.Combine(initCsDir, "AppInitializerOriginal.txt");
 			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
 			var editorCsDir = Path.Combine(SystemProxy.CurrentDir, "Editor");
 			var editorCsPath = Path.Combine(editorCsDir, "EditorAppInitializer.cs");
 
 			var initCs = LoadInitClassFile(initCsPath, "AppInitializer.cs");
+			var initTxt = File.Exists(initTxtPath) ? File.ReadAllText(initTxtPath) : "";
 			var generatedInitCs = LoadInitClassFile(generatedInitCsPath, "AppInitializer.Generated.cs");
 			var editorCs = LoadInitClassFile(editorCsPath, "EditorAppInitializer.cs");
 
 			if (initCs == null || generatedInitCs == null || editorCs == null) return;
 
-			var initMethodName = PackageIdToMethodName(package.Id);
-			// If init code for this package already exists skip injection
-			if (generatedInitCs.Contains("\t" + initMethodName + "()")) return;
-
 			// We guarantee Windows line breaks
 			var newLinesRegex = new Regex(@"\r\n?|\n");
 
 			initCs = newLinesRegex.Replace(initCs, "\r\n");
+			initTxt = newLinesRegex.Replace(initTxt, "\r\n");
 			generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
 			editorCs = newLinesRegex.Replace(editorCs, "\r\n");
 
 			var initTemplate = File.ReadAllLines(initTemplatePath);
+
+			var initMethodName = PackageIdToMethodName(package.Id);
+			// We will rewrite init code if it is the same as the original that came from previous installed version
+			var methodStartLine = $"\r\n\t\tprivate static void {initMethodName}()";
+			var initIndex = initCs.IndexOf(methodStartLine, StringComparison.Ordinal);
+			var initCodeExisted = initIndex > 0;
+			var initTxtIndex = -1;
+			var writeCs = true;
+			var originalInitCode = "";
+			if (initCodeExisted)
+			{
+				var methodEndLine = "\r\n\t\t}\r\n";
+				var methodEndIndex = initCs.IndexOf(methodEndLine, initIndex, StringComparison.Ordinal) + methodEndLine.Length;
+
+				initTxtIndex = initTxt.IndexOf(methodStartLine, StringComparison.Ordinal);
+				var initTxtCodeExisted = initTxtIndex >= 0;
+				if (initTxtCodeExisted)
+				{
+					var methodTxtEndIndex = initTxt.IndexOf(methodEndLine, initTxtIndex, StringComparison.Ordinal) + methodEndLine.Length;
+					var realInitCode = initCs.Substring(initIndex, methodEndIndex - initIndex);
+					originalInitCode = initTxt.Substring(initTxtIndex, methodTxtEndIndex - initTxtIndex);
+					if (realInitCode == originalInitCode)
+					{
+						initCs = initCs.Remove(initIndex, methodEndIndex - initIndex);
+					}
+					else
+					{
+						writeCs = false;
+					}
+					initTxt = initTxt.Remove(initTxtIndex, methodTxtEndIndex - initTxtIndex);
+				}
+				else
+				{
+					writeCs = false;
+				}
+			}
 
 			// Init template file should be written like this:
 			// InitDependencies: a, b, c <in case the init code depends on packages the package itself doesn't depend on>
@@ -1729,11 +1754,14 @@ namespace NugetForUnity
 				}
 			}
 
-			foreach (var use in uses)
+			if (writeCs)
 			{
-				var usingLine = "using " + use + ";";
-				if (initCs.Contains(usingLine)) continue;
-				initCs = usingLine + "\r\n" + initCs;
+				foreach (var use in uses)
+				{
+					var usingLine = "using " + use + ";";
+					if (initCs.Contains(usingLine)) continue;
+					initCs = usingLine + "\r\n" + initCs;
+				}
 			}
 
 			var insertPos = 0;
@@ -1760,27 +1788,60 @@ namespace NugetForUnity
 				}
 			}
 
-			generatedInitCs = generatedInitCs.Substring(0, insertPos) + "\t\t\t" + initMethodName + "();\r\n" + generatedInitCs.Substring(insertPos);
+			if (!initCodeExisted)
+			{
+				generatedInitCs = generatedInitCs.Substring(0, insertPos) + "\t\t\t" + initMethodName + "();\r\n" + generatedInitCs.Substring(insertPos);
+			}
 
-			if (customExceptionLoggingCode.Length > 0)
+			if (customExceptionLoggingCode.Length > 0 && !initCs.Contains(customExceptionLoggingCode))
 			{
 				insertPos = initCs.IndexOf("\t\t}", StringComparison.Ordinal);
 				initCs = initCs.Substring(0, insertPos) + customExceptionLoggingCode + initCs.Substring(insertPos);
+				if (initIndex > 0) initIndex += customExceptionLoggingCode.Length;
 			}
 
 			initCode = "\r\n\t\tprivate static void " + initMethodName + "()\r\n" + initCode;
-			insertPos = initCs.LastIndexOf("\t}", StringComparison.Ordinal);
-			initCs = initCs.Substring(0, insertPos) + initCode + initCs.Substring(insertPos);
+			if (writeCs)
+			{
+				insertPos = initIndex > 0 ? initIndex : initCs.LastIndexOf("\t}", StringComparison.Ordinal);
+				initCs = initCs.Substring(0, insertPos) + initCode + initCs.Substring(insertPos);
+			}
 
+			insertPos = initTxtIndex >= 0 ? initTxtIndex : initTxt.Length;
+			initTxt = initTxt.Substring(0, insertPos) + initCode + initTxt.Substring(insertPos);
+			
 			// Make sure the dir exists
 			Directory.CreateDirectory(initCsDir);
 
-			File.WriteAllText(initCsPath, initCs);
-			File.WriteAllText(generatedInitCsPath, generatedInitCs);
-
-			if (editorInitCode.Length == 0)
+			if (writeCs)
 			{
-				if (!File.Exists(editorCsPath)) File.WriteAllText(editorCsPath, editorCs);
+				File.WriteAllText(initCsPath, initCs);
+				File.WriteAllText(generatedInitCsPath, generatedInitCs);
+			}
+			else if (originalInitCode != initCode)
+			{
+				SystemProxy.LogError($"{initMethodName} is updated in the package but you have also modified it. Compare your version with the one in AppInitializer.txt file.");
+			}
+
+			if (!initTxt.Contains("// DO NOT MODIFY, THIS IS A GENERATED FILE"))
+			{
+				initTxt = "// DO NOT MODIFY, THIS IS A GENERATED FILE\r\n" +
+				          "// This file will always contain the original init code for each package that you have installed.\r\n" +
+				          "// You can compare it with AppInitializer.cs to see what are your modifications and if there are\r\n" +
+				          "// any new modifications from the package that you need to add. NugetForUnity also uses this file\r\n" +
+				          "// to determine if it can replace the package init code in AppInitializer.cs since it will only do\r\n" +
+				          "// that if current init code matches the one from this file which means you didn't add custom\r\n" +
+				          "// modifications to it.\r\n" + initTxt;
+			}
+			File.WriteAllText(initTxtPath, initTxt);
+
+			if (editorInitCode.Length == 0 || initCodeExisted)
+			{
+				if (!File.Exists(editorCsPath))
+				{
+					Directory.CreateDirectory(editorCsDir);
+					File.WriteAllText(editorCsPath, editorCs);
+				}
 				return;
 			}
 			
