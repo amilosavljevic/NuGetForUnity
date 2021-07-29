@@ -1957,6 +1957,7 @@ namespace NugetForUnity
 			if (packagesToInstall.Count == 0)
 			{
 				LogVerbose("No packages need restoring");
+				CheckForUnnecessaryPackages();
 				return;
 			}
 
