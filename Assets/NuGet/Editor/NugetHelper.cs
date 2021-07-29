@@ -1024,9 +1024,12 @@ namespace NugetForUnity
 		{
 			var progressStep = 1.0f / updates.Count;
 			float currentProgress = 0;
+			var lastUpdatedId = "";
 
 			foreach (var update in updates)
 			{
+				if (lastUpdatedId == update.Id) continue;
+				lastUpdatedId = update.Id;
 				SystemProxy.DisplayProgress($"Updating to {update.Id} {update.Version}", "Installing All Updates", currentProgress);
 
 				var installedPackage = packagesToUpdate.FirstOrDefault(p => p.Id == update.Id);
