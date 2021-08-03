@@ -518,6 +518,7 @@ namespace NugetForUnity
 			var roots = new[] {
 				// MacOS directory layout
 				Path.Combine(executablePath, "Contents"),
+				Path.GetDirectoryName(Path.GetDirectoryName(executablePath)),
 				// Windows directory layout
 				Path.Combine(Directory.GetParent(executablePath).FullName, "Data")
 			};

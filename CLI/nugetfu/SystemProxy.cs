@@ -5,9 +5,15 @@ namespace NugetForUnity
 {
 	public static class SystemProxy
 	{
+		private static string unityAppDir;
+		
 		public static string CurrentDir => Directory.GetCurrentDirectory();
 		
-		public static string AppDir => Directory.GetCurrentDirectory();
+		public static string AppDir
+		{
+			get => unityAppDir ?? Directory.GetCurrentDirectory();
+			set => unityAppDir = value;
+		}
 
 		public static void Log(string message)
 		{
