@@ -15,7 +15,7 @@ namespace nugetfu
 			if (args[0] != "restore") return PrintUsage();
 			if (args.Length == 2)
 			{
-				SystemProxy.AppDir = args[1];
+				SystemProxy.AppDir = args[1].Replace("'", "").Replace("\"", "");
 			}
 			NugetHelper.Restore();
 			return 0;
