@@ -136,10 +136,7 @@ namespace NugetForUnity
 
 					foreach (var group in dependencyGroups.Values)
 					{
-						if (group.Dependencies.Count > 0)
-						{
-							package.Dependencies.Add(group);
-						}
+						package.Dependencies.Add(group);
 					}
 				}
 

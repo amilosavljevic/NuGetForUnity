@@ -235,10 +235,7 @@ namespace NugetForUnity
 						group.Dependencies.Add(dependency);
 					}
 
-					if (group.Dependencies.Count > 0)
-					{
-						nuspec.Dependencies.Add(group);
-					}
+					nuspec.Dependencies.Add(group);
 				}
 
 				// Flat dependency list
