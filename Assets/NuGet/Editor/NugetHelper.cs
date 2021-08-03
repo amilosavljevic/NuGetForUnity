@@ -532,7 +532,14 @@ namespace NugetForUnity
 			var existingPaths = allPossiblePaths
 				.Where(Directory.Exists)
 				.ToArray();
-			LogVerbose("All existing path to dependency lookup are: {0}", string.Join(", ", existingPaths));
+			if (existingPaths.Length == 0)
+			{
+				LogVerbose("No existing path for dependency lookup found in roots: {0}", string.Join(", ", roots));
+			}
+			else
+			{
+				LogVerbose("All existing path to dependency lookup are: {0}", string.Join(", ", existingPaths));
+			}
 			return existingPaths;
 		}
 
