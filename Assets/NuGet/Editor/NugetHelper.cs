@@ -106,12 +106,14 @@ namespace NugetForUnity
 		/// </summary>
 		static NugetHelper()
 		{
-			if (SessionState.GetBool("NugetForUnity.FirstProjectOpen", false))
+#if UNITY_EDITOR
+			if (UnityEditor.SessionState.GetBool("NugetForUnity.FirstProjectOpen", false))
 			{
 				return;
 			}
 
-			SessionState.SetBool("NugetForUnity.FirstProjectOpen", true);
+			UnityEditor.SessionState.SetBool("NugetForUnity.FirstProjectOpen", true);
+#endif
                 
 			// if we are entering playmode, don't do anything
 			if (SystemProxy.IsPlayingOrWillChangePlaymode)
