@@ -1769,6 +1769,7 @@ namespace NugetForUnity
 					var usingLine = "using " + use + ";";
 					if (initCs.Contains(usingLine)) continue;
 					initCs = usingLine + "\r\n" + initCs;
+					if (initIndex > 0) initIndex += usingLine.Length + 2;
 				}
 			}
 
