@@ -14,8 +14,8 @@ namespace NugetForUnity
 	/// <summary>
 	/// A set of helper methods that act as a wrapper around nuget.exe
 	/// 
-	/// TIP: It's incredibly useful to associate .nupkg files as compressed folder in Windows (View like .zip files).  To do this:
-	///      1) Open a command prompt as admin (Press Windows key. Type "cmd".  Right click on the icon and choose "Run as Administrator"
+	/// TIP: It's incredibly useful to associate .nupkg files as compressed folder in Windows (View like .zip files). To do this:
+	///      1) Open a command prompt as admin (Press Windows key. Type "cmd". Right click on the icon and choose "Run as Administrator"
 	///      2) Enter this command: cmd /c assoc .nupkg=CompressedFolder
 	/// </summary>
 	public static class NugetHelper
@@ -106,6 +106,13 @@ namespace NugetForUnity
 		/// </summary>
 		static NugetHelper()
 		{
+			if (SessionState.GetBool("NugetForUnity.FirstProjectOpen", false))
+			{
+				return;
+			}
+
+			SessionState.SetBool("NugetForUnity.FirstProjectOpen", true);
+                
 			// if we are entering playmode, don't do anything
 			if (SystemProxy.IsPlayingOrWillChangePlaymode)
 			{
@@ -198,7 +205,7 @@ namespace NugetForUnity
 		/// Runs nuget.exe using the given arguments.
 		/// </summary>
 		/// <param name="arguments">The arguments to run nuget.exe with.</param>
-		/// <param name="logOuput">True to output debug information to the Unity console.  Defaults to true.</param>
+		/// <param name="logOuput">True to output debug information to the Unity console. Defaults to true.</param>
 		/// <returns>The string of text that was output from nuget.exe following its execution.</returns>
 		private static void RunNugetProcess(string arguments, bool logOuput = true)
 		{
@@ -253,7 +260,7 @@ namespace NugetForUnity
 			// ReSharper disable once PossibleNullReferenceException
 			if (!process.WaitForExit(TimeOut))
 			{
-				SystemProxy.LogWarning("NuGet took too long to finish.  Killing operation.");
+				SystemProxy.LogWarning("NuGet took too long to finish. Killing operation.");
 				process.Kill();
 			}
 
@@ -353,8 +360,8 @@ namespace NugetForUnity
 							.First(x => FrameworkNamesAreEqual(x.Name, bestTargetFramework));
 
 						if (bestTargetFramework == "unity" ||
-						    bestTargetFramework == "net35-unity full v3.5" ||
-						    bestTargetFramework == "net35-unity subset v3.5")
+							bestTargetFramework == "net35-unity full v3.5" ||
+							bestTargetFramework == "net35-unity subset v3.5")
 						{
 							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "unity"));
 							selectedDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity full v3.5"));
@@ -711,9 +718,9 @@ namespace NugetForUnity
 		/// Calls "nuget.exe push" to push a .nupkf file to the the server location defined in the NuGet.config file.
 		/// Note: This differs slightly from NuGet's Push command by automatically calling Pack if the .nupkg doesn't already exist.
 		/// </summary>
-		/// <param name="nuspec">The NuspecFile which defines the package to push.  Only the ID and Version are used.</param>
-		/// <param name="nuspecFilePath">The full filepath to the .nuspec file to use.  This is required by NuGet's Push command.</param>
-		/// /// <param name="apiKey">The API key to use when pushing a package to the server.  This is optional.</param>
+		/// <param name="nuspec">The NuspecFile which defines the package to push. Only the ID and Version are used.</param>
+		/// <param name="nuspecFilePath">The full filepath to the .nuspec file to use. This is required by NuGet's Push command.</param>
+		/// /// <param name="apiKey">The API key to use when pushing a package to the server. This is optional.</param>
 		public static void Push(NuspecFile nuspec, string nuspecFilePath, string apiKey = "")
 		{
 			var packagePath = Path.Combine(PackOutputDirectory, $"{nuspec.Id}.{nuspec.Version}.nupkg");
@@ -898,7 +905,7 @@ namespace NugetForUnity
 		/// "Uninstalls" the given package by simply deleting its folder.
 		/// </summary>
 		/// <param name="package">The NugetPackage to uninstall.</param>
-		/// <param name="refreshAssets">True to force Unity to refesh its Assets folder.  False to temporarily ignore the change.  Defaults to true.</param>
+		/// <param name="refreshAssets">True to force Unity to refesh its Assets folder. False to temporarily ignore the change. Defaults to true.</param>
 		public static void Uninstall(NugetPackageIdentifier package, bool refreshAssets = true, bool deleteDependencies = false)
 		{
 			LogVerbose("Uninstalling: {0} {1}", package.Id, package.Version);
@@ -1004,7 +1011,7 @@ namespace NugetForUnity
 		/// </summary>
 		/// <param name="currentVersion">The current package to uninstall.</param>
 		/// <param name="newVersion">The package to install.</param>
-		/// <param name="refreshAssets">True to refresh the assets inside Unity.  False to ignore them (for now).  Defaults to true.</param>
+		/// <param name="refreshAssets">True to refresh the assets inside Unity. False to ignore them (for now). Defaults to true.</param>
 		public static bool Update(NugetPackageIdentifier currentVersion, NugetPackage newVersion, bool refreshAssets = true)
 		{
 			LogVerbose("Updating {0} {1} to {2}", currentVersion.Id, currentVersion.Version, newVersion.Version);
@@ -1168,7 +1175,7 @@ namespace NugetForUnity
 		/// Gets a NugetPackage from the NuGet server with the exact ID and Version given.
 		/// </summary>
 		/// <param name="packageId">The <see cref="NugetPackageIdentifier"/> containing the ID and Version of the package to get.</param>
-		/// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
+		/// <returns>The retrieved package, if there is one. Null if no matching package was found.</returns>
 		private static NugetPackage GetSpecificPackage(NugetPackageIdentifier packageId)
 		{
 			if (lastSpecificPackage != null && lastSpecificPackage != null && lastSpecificPackageId == packageId)
@@ -1323,10 +1330,10 @@ namespace NugetForUnity
 		}
 
 		/// <summary>
-		/// Installs the package given by the identifer.  It fetches the appropriate full package from the installed packages, package cache, or package sources and installs it.
+		/// Installs the package given by the identifer. It fetches the appropriate full package from the installed packages, package cache, or package sources and installs it.
 		/// </summary>
 		/// <param name="package">The identifer of the package to install.</param>
-		/// <param name="refreshAssets">True to refresh the Unity asset database.  False to ignore the changes (temporarily).</param>
+		/// <param name="refreshAssets">True to refresh the Unity asset database. False to ignore the changes (temporarily).</param>
 		internal static bool InstallIdentifier(NugetPackageIdentifier package, bool refreshAssets = true)
 		{
 			if (IsAlreadyImportedInEngine(package))
@@ -1350,7 +1357,7 @@ namespace NugetForUnity
 		}
 
 		/// <summary>
-		/// Outputs the given message to the log only if verbose mode is active.  Otherwise it does nothing.
+		/// Outputs the given message to the log only if verbose mode is active. Otherwise it does nothing.
 		/// </summary>
 		/// <param name="format">The formatted message string.</param>
 		/// <param name="args">The arguments for the formattted message string.</param>
@@ -1366,7 +1373,7 @@ namespace NugetForUnity
 		/// Installs the given package.
 		/// </summary>
 		/// <param name="package">The package to install.</param>
-		/// <param name="refreshAssets">True to refresh the Unity asset database.  False to ignore the changes (temporarily).</param>
+		/// <param name="refreshAssets">True to refresh the Unity asset database. False to ignore the changes (temporarily).</param>
 		public static bool Install(NugetPackage package, bool refreshAssets = true)
 		{
 			if (IsAlreadyImportedInEngine(package))
@@ -1448,7 +1455,7 @@ namespace NugetForUnity
 					}
 					else
 					{
-						// Mono doesn't have a Certificate Authority, so we have to provide all validation manually.  Currently just accept anything.
+						// Mono doesn't have a Certificate Authority, so we have to provide all validation manually. Currently just accept anything.
 						// See here: http://stackoverflow.com/questions/4926676/mono-webrequest-fails-with-https
 
 						// remove all handlers
@@ -1906,12 +1913,12 @@ namespace NugetForUnity
 		{
 			new AuthenticatedFeed()
 			{
-				AccountUrlPattern = @"^https:\/\/(?<account>[a-zA-z0-9]+).pkgs.visualstudio.com",
+				AccountUrlPattern = @"^https:\/\/(?<account>[-a-zA-Z0-9]+)\.pkgs\.visualstudio\.com",
 				ProviderUrlTemplate = "https://{account}.pkgs.visualstudio.com/_apis/public/nuget/client/CredentialProviderBundle.zip"
 			},
 			new AuthenticatedFeed()
 			{
-				AccountUrlPattern = @"^https:\/\/pkgs.dev.azure.com\/(?<account>[a-zA-z0-9]+)\/",
+				AccountUrlPattern = @"^https:\/\/pkgs\.dev\.azure\.com\/(?<account>[-a-zA-Z0-9]+)\/",
 				ProviderUrlTemplate = "https://pkgs.dev.azure.com/{account}/_apis/public/nuget/client/CredentialProviderBundle.zip"
 			}
 		};
@@ -1926,6 +1933,7 @@ namespace NugetForUnity
 		public static Stream RequestUrl(string url, string userName, string password, int? timeOut)
 		{
 			var getRequest = (HttpWebRequest)WebRequest.Create(url);
+			getRequest.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.None;
 			if (timeOut.HasValue)
 			{
 				getRequest.Timeout = timeOut.Value;
@@ -2037,7 +2045,7 @@ namespace NugetForUnity
 		/// Checks if a given package is installed.
 		/// </summary>
 		/// <param name="package">The package to check if is installed.</param>
-		/// <returns>True if the given package is installed.  False if it is not.</returns>
+		/// <returns>True if the given package is installed. False if it is not.</returns>
 		internal static bool IsInstalled(NugetPackageIdentifier package)
 		{
 			if (IsAlreadyImportedInEngine(package))

@@ -98,7 +98,7 @@ namespace NugetForUnity
 		/// Gets a NugetPackage from the NuGet server that matches (or is in range of) the <see cref="NugetPackageIdentifier"/> given.
 		/// </summary>
 		/// <param name="package">The <see cref="NugetPackageIdentifier"/> containing the ID and Version of the package to get.</param>
-		/// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
+		/// <returns>The retrieved package, if there is one. Null if no matching package was found.</returns>
 		public List<NugetPackage> FindPackagesById(NugetPackageIdentifier package)
 		{
 			List<NugetPackage> foundPackages;
@@ -164,7 +164,7 @@ namespace NugetForUnity
 		/// Gets a NugetPackage from the NuGet server that matches (or is in range of) the <see cref="NugetPackageIdentifier"/> given.
 		/// </summary>
 		/// <param name="package">The <see cref="NugetPackageIdentifier"/> containing the ID and Version of the package to get.</param>
-		/// <returns>The retrieved package, if there is one.  Null if no matching package was found.</returns>
+		/// <returns>The retrieved package, if there is one. Null if no matching package was found.</returns>
 		public NugetPackage GetSpecificPackage(NugetPackageIdentifier package)
 		{
 			if (package.HasVersionRange)
@@ -178,6 +178,7 @@ namespace NugetForUnity
 				if (File.Exists(localPackagePath))
 				{
 					NugetPackage localPackage = NugetPackage.FromNupkgFile(localPackagePath);
+					localPackage.PackageSource = this;
 					return localPackage;
 				}
 				else
@@ -360,7 +361,7 @@ namespace NugetForUnity
 		{
 			NugetHelper.LogVerbose("Getting packages from: {0}", url);
 
-			// Mono doesn't have a Certificate Authority, so we have to provide all validation manually.  Currently just accept anything.
+			// Mono doesn't have a Certificate Authority, so we have to provide all validation manually. Currently just accept anything.
 			// See here: http://stackoverflow.com/questions/4926676/mono-webrequest-fails-with-https
 
 			// remove all handlers

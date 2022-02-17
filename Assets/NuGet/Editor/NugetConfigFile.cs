@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace NugetForUnity
@@ -25,7 +26,7 @@ namespace NugetForUnity
 		public NugetPackageSource ActivePackageSource { get; private set; }
 
 		/// <summary>
-		/// Gets the local path where packages are to be installed.  It can be a full path or a relative path.
+		/// Gets the local path where packages are to be installed. It can be a full path or a relative path.
 		/// </summary>
 		public string RepositoryPath { get; private set; }
 
@@ -35,7 +36,7 @@ namespace NugetForUnity
 		public string DefaultPushSource { get; private set; }
 
 		/// <summary>
-		/// True to output verbose log messages to the console.  False to output the normal level of messages.
+		/// True to output verbose log messages to the console. False to output the normal level of messages.
 		/// </summary>
 		public bool Verbose { get; set; }
 
@@ -50,7 +51,7 @@ namespace NugetForUnity
 		public bool ReadOnlyPackageFiles { get; set; }
 
 		/// <summary>
-		/// The incomplete path that is saved.  The path is expanded and made public via the property above.
+		/// The incomplete path that is saved. The path is expanded and made public via the property above.
 		/// </summary>
 		public string SavedRepositoryPath { get; set; }
 
@@ -104,7 +105,7 @@ namespace NugetForUnity
 
 				if (source.HasPassword)
 				{
-					var sourceElement = new XElement(source.Name);
+					var sourceElement = new XElement(XmlConvert.EncodeName(source.Name) ?? string.Empty);
 					packageSourceCredentials.Add(sourceElement);
 
 					addElement = new XElement("add");
@@ -258,7 +259,7 @@ namespace NugetForUnity
 			{
 				foreach (var sourceElement in packageSourceCredentials.Elements())
 				{
-					var name = sourceElement.Name.LocalName;
+					var name = XmlConvert.DecodeName(sourceElement.Name.LocalName);
 					var source = configFile.PackageSources.FirstOrDefault(p => p.Name == name);
 					if (source != null)
 					{
