@@ -87,5 +87,10 @@ namespace NugetForUnity
 		{
 			//Nothing needs to be done in CLI
 		}
+		
+		public static void ShowAlert(string message)
+		{
+			//Nothing needs to be done in CLI
+		}
 	}
 }

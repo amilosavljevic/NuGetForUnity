@@ -186,5 +186,10 @@ namespace NugetForUnity
 
 			return sBuilder.ToString();
 		}
+
+		public static void ShowAlert(string message)
+		{
+			EditorUtility.DisplayDialog("Error", message, "OK");
+		}
 	}
 }

@@ -1568,6 +1568,7 @@ namespace NugetForUnity
 			}
 			catch (Exception e)
 			{
+				SystemProxy.ShowAlert($"Unable to install package {package.Id} {package.Version}: {e.Message}");
 				SystemProxy.LogError($"Unable to install package {package.Id} {package.Version}\n{e}");
 				installSuccess = false;
 			}
@@ -2009,6 +2010,7 @@ namespace NugetForUnity
 			}
 			catch (Exception e)
 			{
+				SystemProxy.ShowAlert("Failed to restore packages: " + e.Message);
 				SystemProxy.LogError(e.ToString());
 			}
 			finally
