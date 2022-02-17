@@ -1,7 +1,7 @@
 param([string]$OutputDirectory = ".\bin")
 
 Import-Module UnitySetup -ErrorAction Stop -MinimumVersion 4.0.97
-Import-Module VSSetup -ErrorAction Stop -MinimumVersion 2.0.1.32208
+# Import-Module VSSetup -ErrorAction Stop -MinimumVersion 2.0.1.32208
 
 Write-Host "Build NuGetForUnity " -ForegroundColor Green
 
@@ -18,13 +18,16 @@ Write-Host "Building package with Unity $projectVersion" -ForegroundColor Green
 
 
 # Build the NuGetForUnity .dlls
-$vspath = Get-VSSetupInstance | 
-    Select-VSSetupInstance -Require Microsoft.Component.MSBuild -Latest | 
-    Select-Object -ExpandProperty InstallationPath
+# $vspath = Get-VSSetupInstance | 
+#     Select-VSSetupInstance -Require Microsoft.Component.MSBuild -Latest | 
+#     Select-Object -ExpandProperty InstallationPath
 
-$msbuild = Get-ChildItem "$vspath" -Filter msbuild.exe -Recurse | Select-Object -First 1 -ExpandProperty FullName
+$msbuild = Get-ChildItem "C:\Program Files\JetBrains\JetBrains Rider*\tools\MSBuild\Current\Bin\" -Filter msbuild.exe -Recurse | Select-Object -First 1 -ExpandProperty FullName
 if ( !$msbuild -or $msbuild -eq "" ) {
-    throw "Could not find msbuild"
+	$msbuild = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\*\*\MSBuild\Current\Bin\" -Filter msbuild.exe -Recurse | Select-Object -First 1 -ExpandProperty FullName
+	if ( !$msbuild -or $msbuild -eq "" ) {
+		throw "Could not find msbuild"
+	}
 }
 
 $ReferencePath = "$unityPath\Editor\Data\Managed\"
