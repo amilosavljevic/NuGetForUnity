@@ -507,7 +507,14 @@ namespace NugetForUnity
 		private static HashSet<string> alreadyImportedLibs = null;
 		private static HashSet<string> GetAlreadyImportedLibs()
 		{
-			if (alreadyImportedLibs == null)
+			if (alreadyImportedLibs != null) return alreadyImportedLibs;
+			
+			var cachePath = $"Library/AllLibPaths{SystemProxy.UnityVersion}.txt";
+			if (File.Exists(cachePath))
+			{
+				alreadyImportedLibs = new HashSet<string>(File.ReadAllLines(cachePath));
+			}
+			else
 			{
 				string[] lookupPaths = GetAllLookupPaths();
 				IEnumerable<string> libNames = lookupPaths
@@ -515,6 +522,7 @@ namespace NugetForUnity
 					.Select(Path.GetFileName)
 					.Select(p => Path.ChangeExtension(p, null));
 				alreadyImportedLibs = new HashSet<string>(libNames);
+				File.WriteAllLines(cachePath, alreadyImportedLibs);
 				LogVerbose("Already imported libs: {0}", string.Join(", ", alreadyImportedLibs));
 			}
 
