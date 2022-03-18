@@ -12,7 +12,7 @@ namespace NugetForUnity
         {
             AssetDatabase.ExportPackage(
                 new string[] { "Assets/Nuget" },
-                "NugetForUnity.unitypackage",
+                "NuGetForUnity.unitypackage",
                 ExportPackageOptions.Recurse);
         }
     }

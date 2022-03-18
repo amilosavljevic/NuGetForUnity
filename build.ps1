@@ -40,7 +40,7 @@ if ( $LASTEXITCODE -ne 0 ) {
 
 
 # Copy .dlls from the build into the Packager folder
-Copy-Item ".\CreateDLL\bin\Release\NugetForUnity.dll" ".\Packager\Assets\NuGet\Editor"
+Copy-Item ".\CreateDLL\bin\Release\NuGetForUnity.dll" ".\Packager\Assets\NuGet\Editor"
 
 # Launch Unity to export the NuGetForUnity package
 Start-UnityEditor -Project ".\Packager" -BatchMode -Quit -Wait -ExecuteMethod "NugetForUnity.Export.Execute" -LogFile ".\Packager\NuGetForUnity.unitypackage.log"
