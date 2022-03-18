@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace NugetForUnity
 {
@@ -154,7 +155,22 @@ namespace NugetForUnity
 		/// <returns>The <see cref="NugetPackage"/> loaded from the .nupkg file.</returns>
 		public static NugetPackage FromNupkgFile(string nupkgFilepath)
 		{
-			var package = FromNuspec(NuspecFile.FromNupkgFile(nupkgFilepath));
+			var nupgkFileInfo = new FileInfo(nupkgFilepath);
+			var cachedPath = Path.Combine(SystemProxy.CurrentDir, $"../Library/{Path.GetFileName(nupkgFilepath)}");
+			var cachedFileInfo = new FileInfo(cachedPath);
+			NuspecFile nuspecFile;
+			if (cachedFileInfo.Exists && nupgkFileInfo.Exists &&
+			    cachedFileInfo.LastWriteTimeUtc > nupgkFileInfo.LastWriteTimeUtc)
+			{
+				nuspecFile = NuspecFile.Load(cachedPath);
+			}
+			else
+			{
+				nuspecFile = NuspecFile.FromNupkgFile(nupkgFilepath);
+				nuspecFile.Save(cachedPath);
+			}
+			
+			var package = FromNuspec(nuspecFile);
 			package.DownloadUrl = nupkgFilepath;
 			return package;
 		}

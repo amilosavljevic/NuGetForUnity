@@ -509,7 +509,7 @@ namespace NugetForUnity
 		{
 			if (alreadyImportedLibs != null) return alreadyImportedLibs;
 			
-			var cachePath = $"Library/AllLibPaths{SystemProxy.UnityVersion}.txt";
+			var cachePath = Path.Combine(SystemProxy.CurrentDir, $"../Library/AllLibPaths{SystemProxy.UnityVersion}.txt");
 			if (File.Exists(cachePath))
 			{
 				alreadyImportedLibs = new HashSet<string>(File.ReadAllLines(cachePath));
