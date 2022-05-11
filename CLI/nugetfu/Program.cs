@@ -17,8 +17,8 @@ namespace nugetfu
 			{
 				SystemProxy.AppDir = args[1].Replace("'", "").Replace("\"", "");
 			}
-			NugetHelper.Restore();
-			return 0;
+
+			return NugetHelper.Restore() ? 0 : 1;
 		}
 
 		private static int PrintUsage()

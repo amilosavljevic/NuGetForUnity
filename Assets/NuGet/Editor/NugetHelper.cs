@@ -1977,7 +1977,7 @@ namespace NugetForUnity
 		/// <summary>
 		/// Restores all packages defined in packages.config.
 		/// </summary>
-		public static void Restore()
+		public static bool Restore()
 		{
 			UpdateInstalledPackages();
 			var packagesToInstall = PackagesConfigFile.Packages.FindAll(package => !IsInstalled(package));
@@ -1986,11 +1986,13 @@ namespace NugetForUnity
 			{
 				LogVerbose("No packages need restoring");
 				CheckForUnnecessaryPackages();
-				return;
+				return true;
 			}
 
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
+
+			var allSucceeded = true;
 
 			try
 			{
@@ -2008,7 +2010,7 @@ namespace NugetForUnity
 						SystemProxy.DisplayProgress("Restoring NuGet Packages", $"Restoring {package.Id} {package.Version}", currentProgress);
 						
 						LogVerbose("---Restoring {0} {1}", package.Id, package.Version);
-						InstallIdentifier(package);
+						allSucceeded = allSucceeded && InstallIdentifier(package);
 					}
 
 					currentProgress += progressStep;
@@ -2018,6 +2020,7 @@ namespace NugetForUnity
 			}
 			catch (Exception e)
 			{
+				allSucceeded = false;
 				SystemProxy.ShowAlert("Failed to restore packages: " + e.Message);
 				SystemProxy.LogError(e.ToString());
 			}
@@ -2029,6 +2032,8 @@ namespace NugetForUnity
 				SystemProxy.RefreshAssets();
 				SystemProxy.ClearProgress();
 			}
+
+			return allSucceeded;
 		}
 
 		internal static void CheckForUnnecessaryPackages()

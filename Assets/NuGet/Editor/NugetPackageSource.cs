@@ -372,17 +372,26 @@ namespace NugetForUnity
 			
 			var packages = new List<NugetPackage>();
 			var nextPageUrl = url;
+			var failCounter = 2;
 			while (nextPageUrl != null)
 			{
 				using (var responseStream = NugetHelper.RequestUrl(nextPageUrl, username, password, timeOut: 5000))
 				{
 					using (var streamReader = new StreamReader(responseStream))
 					{
-						var newPackages = NugetODataResponse.Parse(XDocument.Load(streamReader), out nextPageUrl);
-						foreach (var package in newPackages)
+						try
 						{
-							package.PackageSource = this;
-							packages.Add(package);
+							var newPackages = NugetODataResponse.Parse(XDocument.Load(streamReader), out nextPageUrl);
+							foreach (var package in newPackages)
+							{
+								package.PackageSource = this;
+								packages.Add(package);
+							}
+						}
+						catch (Exception e)
+						{
+							if (--failCounter > 0) SystemProxy.LogWarning($"Failed reading response {e}");
+							else throw;
 						}
 					}
 				}

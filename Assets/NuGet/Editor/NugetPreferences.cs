@@ -26,7 +26,7 @@ namespace NugetForUnity
 			{
 				label = "NuGet for Unity",
 				keywords = new HashSet<string>(new [] {"nuget", "package", "nupkg"}),
-				guiHandler = (searchContext) => PreferencesGUI()
+				guiHandler = (_) => PreferencesGUI()
 			};
 
 			return provider;
