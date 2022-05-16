@@ -522,6 +522,7 @@ namespace NugetForUnity
 					.Select(Path.GetFileName)
 					.Select(p => Path.ChangeExtension(p, null));
 				alreadyImportedLibs = new HashSet<string>(libNames);
+				if (!Directory.Exists("../Library/")) Directory.CreateDirectory("../Library/");
 				File.WriteAllLines(cachePath, alreadyImportedLibs);
 				LogVerbose("Already imported libs: {0}", string.Join(", ", alreadyImportedLibs));
 			}
