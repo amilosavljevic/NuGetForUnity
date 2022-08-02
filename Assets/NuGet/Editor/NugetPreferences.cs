@@ -12,7 +12,7 @@ namespace NugetForUnity
 		/// <summary>
 		/// The current version of NuGet for Unity.
 		/// </summary>
-		public const string NuGetForUnityVersion = "3.0.5";
+		public const string NuGetForUnityVersion = "3.0.6";
 
 		/// <summary>
 		/// The current position of the scroll bar in the GUI.

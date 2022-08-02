@@ -870,7 +870,7 @@ namespace NugetForUnity
 		/// <summary>
 		/// Uninstalls all of the currently installed packages.
 		/// </summary>
-		internal static void UninstallAll()
+		public static void UninstallAll()
 		{
 			foreach (var package in installedPackages.Values.ToList())
 			{
@@ -1885,7 +1885,7 @@ namespace NugetForUnity
 
 			if (customExceptionLoggingCode.Length > 0 && !data.InitCs.Contains(customExceptionLoggingCode))
 			{
-				insertPos = data.InitCs.IndexOf("\t\t}", StringComparison.Ordinal);
+				insertPos = data.InitCs.IndexOf("\n\t\t}", StringComparison.Ordinal) + 1;
 				data.InitCs = data.InitCs.Insert(insertPos, customExceptionLoggingCode);
 				if (initIndex > 0) initIndex += customExceptionLoggingCode.Length;
 			}
@@ -1938,6 +1938,8 @@ namespace NugetForUnity
 				return;
 			}
 
+			// ************ EditorAppInitializer setup ************** 
+			
 			if (data.EditorTxt.Contains(editorInitCode)) return;
 
 			DeleteMethodIfExists(initMethodName, ref data.EditorTxt, out var origStartIndex);
@@ -1951,7 +1953,7 @@ namespace NugetForUnity
 			}
 
 			var initEditIndexStart = data.EditorCs.IndexOf("public static void InitEditStuff()", StringComparison.Ordinal);
-			var initEditIndexEnd = data.EditorCs.IndexOf("\t\t}", initEditIndexStart, StringComparison.Ordinal);
+			var initEditIndexEnd = data.EditorCs.IndexOf("\n\t\t}", initEditIndexStart, StringComparison.Ordinal);
 
 			if (initEditIndexEnd < 0)
 			{
@@ -1959,7 +1961,7 @@ namespace NugetForUnity
 			}
 			else if (data.EditorCs.IndexOf($"\t{initMethodName}()", StringComparison.OrdinalIgnoreCase) < 0)
 			{
-				data.EditorCs = data.EditorCs.Insert(initEditIndexEnd, $"\t\t\t{initMethodName}();\r\n");
+				data.EditorCs = data.EditorCs.Insert(initEditIndexEnd + 1, $"\t\t\t{initMethodName}();\r\n");
 			}
 
 			var optionalNewLine = "";
