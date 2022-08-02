@@ -888,6 +888,9 @@ namespace NugetForUnity
 			var editorCs = LoadInitClassFile("EditorAppInitializer.cs");
 			
 			var editorInitPath = Path.Combine(SystemProxy.CurrentDir, "Editor/EditorAppInitializer.cs");
+			var editorOriginalInitPath = Path.Combine(SystemProxy.CurrentDir, "Editor/EditorAppInitializerOriginal.txt");
+			File.WriteAllText(editorOriginalInitPath, "");
+			File.WriteAllText(initTxtPath, "");
 
 			if (initCs != null && generatedInitCs != null && editorCs != null)
 			{
@@ -903,7 +906,6 @@ namespace NugetForUnity
 				Directory.CreateDirectory(Path.GetDirectoryName(editorInitPath));
 
 				File.WriteAllText(initCsPath, initCs);
-				DeleteFile(initTxtPath);
 				File.WriteAllText(generatedInitCsPath, generatedInitCs);
 				File.WriteAllText(editorInitPath, editorCs);
 
@@ -917,7 +919,8 @@ namespace NugetForUnity
 		/// </summary>
 		/// <param name="package">The NugetPackage to uninstall.</param>
 		/// <param name="refreshAssets">True to force Unity to refesh its Assets folder. False to temporarily ignore the change. Defaults to true.</param>
-		public static void Uninstall(NugetPackageIdentifier package, bool refreshAssets = true, bool deleteDependencies = false)
+		/// <param name="fullUninstall">False if uninstall all or update is being done and they will take care of details</param>
+		public static void Uninstall(NugetPackageIdentifier package, bool refreshAssets = true, bool fullUninstall = false)
 		{
 			LogVerbose("Uninstalling: {0} {1}", package.Id, package.Version);
 
@@ -958,8 +961,38 @@ namespace NugetForUnity
 
 			installedPackages.Remove(foundPackage.Id);
 
-			if (deleteDependencies)
+			if (fullUninstall)
 			{
+				// If coming from Update or Uninstall All 
+				var data = new InitCodeData();
+				var methodName = PackageIdToMethodName(foundPackage.Id, foundPackage.Title);
+				if (DeleteCallIfExists(methodName, ref data.GeneratedInitCs))
+				{
+					File.WriteAllText(data.GeneratedInitCsPath, data.GeneratedInitCs);
+				}
+
+				if (DeleteMethodIfExists(methodName, ref data.InitCs, out _))
+				{
+					File.WriteAllText(data.InitCsPath, data.InitCs);
+				}
+
+				if (DeleteMethodIfExists(methodName, ref data.InitTxt, out _))
+				{
+					File.WriteAllText(data.InitTxtPath, data.InitTxt);
+				}
+
+				var methodDeleted = DeleteMethodIfExists(methodName, ref data.EditorCs, out _);
+				var callDeleted = DeleteCallIfExists(methodName, ref data.EditorCs);
+				if (methodDeleted || callDeleted)
+				{
+					File.WriteAllText(data.EditorCsPath, data.EditorCs);
+				}
+
+				if (DeleteMethodIfExists(methodName, ref data.EditorTxt, out _))
+				{
+					File.WriteAllText(data.EditorTxtPath, data.EditorTxt.TrimEnd());
+				}
+				
 				var frameworkGroup = GetBestDependencyFrameworkGroupForCurrentSettings(foundPackage);
 				foreach (var dependency in frameworkGroup.Dependencies)
 				{
@@ -1341,9 +1374,10 @@ namespace NugetForUnity
 		}
 
 		/// <summary>
-		/// Installs the package given by the identifer. It fetches the appropriate full package from the installed packages, package cache, or package sources and installs it.
+		/// Installs the package given by the identifier. It fetches the appropriate full package from the
+		/// installed packages, package cache, or package sources and installs it.
 		/// </summary>
-		/// <param name="package">The identifer of the package to install.</param>
+		/// <param name="package">The identifier of the package to install.</param>
 		/// <param name="refreshAssets">True to refresh the Unity asset database. False to ignore the changes (temporarily).</param>
 		internal static bool InstallIdentifier(NugetPackageIdentifier package, bool refreshAssets = true)
 		{
@@ -1360,11 +1394,9 @@ namespace NugetForUnity
 				if (package.IsManuallyInstalled) foundPackage.IsManuallyInstalled = true;
 				return Install(foundPackage, refreshAssets);
 			}
-			else
-			{
-				SystemProxy.LogError($"Could not find {package.Id} {package.Version} or greater.");
-				return false;
-			}
+
+			SystemProxy.LogError($"Could not find {package.Id} {package.Version} or greater.");
+			return false;
 		}
 
 		/// <summary>
@@ -1442,7 +1474,8 @@ namespace NugetForUnity
 					var installed = InstallIdentifier(dependency, false);
 					if (!installed)
 					{
-						throw new Exception($"Failed to install dependency: {dependency.Id} {dependency.Version}.");
+						SystemProxy.LogError($"Failed to install dependency: {dependency.Id} {dependency.Version}.");
+						return false;
 					}
 				}
 
@@ -1594,11 +1627,13 @@ namespace NugetForUnity
 			return installSuccess;
 		}
 		
-		private static string PackageIdToMethodName(string pkgId)
+		private static string PackageIdToMethodName(string pkgId, string packageTitle = "")
 		{
 			pkgId = pkgId.Replace("nordeus.", "").Replace("unity.", "");
 			pkgId = pkgId.Substring(0, 1).ToUpper() + pkgId.Substring(1);
-			return "Init" + pkgId;
+			packageTitle = packageTitle.Replace(" ", "");
+			var canUseTitle = string.Equals(pkgId, packageTitle, StringComparison.OrdinalIgnoreCase);
+			return "Init" + (canUseTitle ? packageTitle : pkgId);
 		}
 
 		private static string LoadInitClassFile(string path, string name)
@@ -1622,36 +1657,62 @@ namespace NugetForUnity
 			}
 		}
 
+		private class InitCodeData
+		{
+			public readonly string InitCsDir;
+			public readonly string InitCsPath;
+			public readonly string InitTxtPath;
+			public readonly string GeneratedInitCsPath;
+			public readonly string EditorCsDir;
+			public readonly string EditorCsPath;
+			public readonly string EditorTxtPath;
+			
+			public string InitCs;
+			public string InitTxt;
+			public string GeneratedInitCs;
+			public string EditorCs;
+			public string EditorTxt;
+
+			public bool IsValid => InitCs != null && GeneratedInitCs != null && EditorCs != null;
+
+			public InitCodeData()
+			{
+				// We guarantee Windows line breaks
+				var newLinesRegex = new Regex(@"\r\n?|\n");
+				
+				InitCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
+				InitCsPath = Path.Combine(InitCsDir, "AppInitializer.cs");
+				InitTxtPath = Path.Combine(InitCsDir, "AppInitializerOriginal.txt");
+				GeneratedInitCsPath = Path.Combine(InitCsDir, "AppInitializer.Generated.cs");
+				EditorCsDir = Path.Combine(SystemProxy.CurrentDir, "Editor");
+				EditorCsPath = Path.Combine(EditorCsDir, "EditorAppInitializer.cs");
+				EditorTxtPath = Path.Combine(EditorCsDir, "EditorAppInitializerOriginal.txt");
+				
+				InitCs = LoadInitClassFile(InitCsPath, "AppInitializer.cs");
+				if (InitCs != null) InitCs = newLinesRegex.Replace(InitCs, "\r\n");
+				InitTxt = File.Exists(InitTxtPath) ? File.ReadAllText(InitTxtPath) : "";
+				InitTxt = newLinesRegex.Replace(InitTxt, "\r\n");
+				GeneratedInitCs = LoadInitClassFile(GeneratedInitCsPath, "AppInitializer.Generated.cs");
+				if (GeneratedInitCs != null) GeneratedInitCs = newLinesRegex.Replace(GeneratedInitCs, "\r\n");
+				EditorCs = LoadInitClassFile(EditorCsPath, "EditorAppInitializer.cs");
+				if (EditorCs != null) EditorCs = newLinesRegex.Replace(EditorCs, "\r\n");
+				EditorTxt = File.Exists(EditorTxtPath) ? File.ReadAllText(EditorTxtPath) : "";
+				EditorTxt = newLinesRegex.Replace(EditorTxt, "\r\n");
+			}
+		}
+
 		private static void ProcessInitTemplate(string initTemplatePath, NugetPackage package)
 		{
-			var initCsDir = Path.Combine(SystemProxy.CurrentDir, "Scripts/Initialization");
-			var initCsPath = Path.Combine(initCsDir, "AppInitializer.cs");
-			var initTxtPath = Path.Combine(initCsDir, "AppInitializerOriginal.txt");
-			var generatedInitCsPath = Path.Combine(initCsDir, "AppInitializer.Generated.cs");
-			var editorCsDir = Path.Combine(SystemProxy.CurrentDir, "Editor");
-			var editorCsPath = Path.Combine(editorCsDir, "EditorAppInitializer.cs");
+			var data = new InitCodeData();
 
-			var initCs = LoadInitClassFile(initCsPath, "AppInitializer.cs");
-			var initTxt = File.Exists(initTxtPath) ? File.ReadAllText(initTxtPath) : "";
-			var generatedInitCs = LoadInitClassFile(generatedInitCsPath, "AppInitializer.Generated.cs");
-			var editorCs = LoadInitClassFile(editorCsPath, "EditorAppInitializer.cs");
-
-			if (initCs == null || generatedInitCs == null || editorCs == null) return;
-
-			// We guarantee Windows line breaks
-			var newLinesRegex = new Regex(@"\r\n?|\n");
-
-			initCs = newLinesRegex.Replace(initCs, "\r\n");
-			initTxt = newLinesRegex.Replace(initTxt, "\r\n");
-			generatedInitCs = newLinesRegex.Replace(generatedInitCs, "\r\n");
-			editorCs = newLinesRegex.Replace(editorCs, "\r\n");
+			if (!data.IsValid) return;
 
 			var initTemplate = File.ReadAllLines(initTemplatePath);
 
-			var initMethodName = PackageIdToMethodName(package.Id);
+			var initMethodName = PackageIdToMethodName(package.Id, package.Title);
 			// We will rewrite init code if it is the same as the original that came from previous installed version
 			var methodStartLine = $"\r\n\t\tprivate static void {initMethodName}()";
-			var initIndex = initCs.IndexOf(methodStartLine, StringComparison.Ordinal);
+			var initIndex = data.InitCs.IndexOf(methodStartLine, StringComparison.OrdinalIgnoreCase);
 			var initCodeExisted = initIndex > 0;
 			var initTxtIndex = -1;
 			var writeCs = true;
@@ -1659,24 +1720,24 @@ namespace NugetForUnity
 			if (initCodeExisted)
 			{
 				var methodEndLine = "\r\n\t\t}\r\n";
-				var methodEndIndex = initCs.IndexOf(methodEndLine, initIndex, StringComparison.Ordinal) + methodEndLine.Length;
+				var methodEndIndex = data.InitCs.IndexOf(methodEndLine, initIndex, StringComparison.Ordinal) + methodEndLine.Length;
 
-				initTxtIndex = initTxt.IndexOf(methodStartLine, StringComparison.Ordinal);
+				initTxtIndex = data.InitTxt.IndexOf(methodStartLine, StringComparison.OrdinalIgnoreCase);
 				var initTxtCodeExisted = initTxtIndex >= 0;
 				if (initTxtCodeExisted)
 				{
-					var methodTxtEndIndex = initTxt.IndexOf(methodEndLine, initTxtIndex, StringComparison.Ordinal) + methodEndLine.Length;
-					var realInitCode = initCs.Substring(initIndex, methodEndIndex - initIndex);
-					originalInitCode = initTxt.Substring(initTxtIndex, methodTxtEndIndex - initTxtIndex);
+					var methodTxtEndIndex = data.InitTxt.IndexOf(methodEndLine, initTxtIndex, StringComparison.Ordinal) + methodEndLine.Length;
+					var realInitCode = data.InitCs.Substring(initIndex, methodEndIndex - initIndex);
+					originalInitCode = data.InitTxt.Substring(initTxtIndex, methodTxtEndIndex - initTxtIndex);
 					if (realInitCode == originalInitCode)
 					{
-						initCs = initCs.Remove(initIndex, methodEndIndex - initIndex);
+						data.InitCs = data.InitCs.Remove(initIndex, methodEndIndex - initIndex);
 					}
 					else
 					{
 						writeCs = false;
 					}
-					initTxt = initTxt.Remove(initTxtIndex, methodTxtEndIndex - initTxtIndex);
+					data.InitTxt = data.InitTxt.Remove(initTxtIndex, methodTxtEndIndex - initTxtIndex);
 				}
 				else
 				{
@@ -1711,6 +1772,7 @@ namespace NugetForUnity
 			var editorInitCode = "";
 
 			var line = 0;
+			var initCodeFound = false;
 			var initSceneCodeFound = false;
 			for (; line < initTemplate.Length; line++)
 			{
@@ -1766,7 +1828,7 @@ namespace NugetForUnity
 					continue;
 				}
 
-				var initCodeFound = initTemplate[line].StartsWith(INIT_CODE_KEY, StringComparison.Ordinal);
+				initCodeFound = initTemplate[line].StartsWith(INIT_CODE_KEY, StringComparison.Ordinal);
 				initSceneCodeFound = initTemplate[line].StartsWith(INIT_SCENE_CODE_KEY, StringComparison.Ordinal);
 				if (initCodeFound || initSceneCodeFound)
 				{
@@ -1786,8 +1848,8 @@ namespace NugetForUnity
 				foreach (var use in uses)
 				{
 					var usingLine = "using " + use + ";";
-					if (initCs.Contains(usingLine)) continue;
-					initCs = usingLine + "\r\n" + initCs;
+					if (data.InitCs.Contains(usingLine)) continue;
+					data.InitCs = usingLine + "\r\n" + data.InitCs;
 					if (initIndex > 0) initIndex += usingLine.Length + 2;
 				}
 			}
@@ -1796,109 +1858,161 @@ namespace NugetForUnity
 
 			if (initSceneCodeFound)
 			{
-				insertPos = generatedInitCs.LastIndexOf("\t\t}", StringComparison.Ordinal);
+				insertPos = data.GeneratedInitCs.LastIndexOf("\t\t}", StringComparison.Ordinal);
 			}
-			else
+			else if (initCodeFound)
 			{
 				foreach (var dependency in dependencies)
 				{
 					var depMethod = PackageIdToMethodName(dependency);
-					var depIndex = generatedInitCs.IndexOf(depMethod, StringComparison.Ordinal);
+					var depIndex = data.GeneratedInitCs.IndexOf(depMethod, StringComparison.OrdinalIgnoreCase);
 					if (depIndex < 0) continue;
-					var newInsertPos = generatedInitCs.IndexOf("\r\n", depIndex, StringComparison.Ordinal) + 2;
+					var newInsertPos = data.GeneratedInitCs.IndexOf("\r\n", depIndex, StringComparison.Ordinal) + 2;
 					if (newInsertPos > insertPos) insertPos = newInsertPos;
 				}
 
 				if (insertPos == 0)
 				{
 					const string NonSceneInit = "private static void DoNonSceneInits()\r\n\t\t{\r\n";
-					insertPos = generatedInitCs.IndexOf(NonSceneInit, StringComparison.Ordinal) + NonSceneInit.Length;
+					insertPos = data.GeneratedInitCs.IndexOf(NonSceneInit, StringComparison.Ordinal) + NonSceneInit.Length;
 				}
 			}
 
-			if (!initCodeExisted)
+			if (!initCodeExisted && (initCodeFound || initSceneCodeFound))
 			{
-				generatedInitCs = generatedInitCs.Substring(0, insertPos) + "\t\t\t" + initMethodName + "();\r\n" + generatedInitCs.Substring(insertPos);
+				data.GeneratedInitCs = data.GeneratedInitCs.Insert(insertPos, "\t\t\t" + initMethodName + "();\r\n");
 			}
 
-			if (customExceptionLoggingCode.Length > 0 && !initCs.Contains(customExceptionLoggingCode))
+			if (customExceptionLoggingCode.Length > 0 && !data.InitCs.Contains(customExceptionLoggingCode))
 			{
-				insertPos = initCs.IndexOf("\t\t}", StringComparison.Ordinal);
-				initCs = initCs.Substring(0, insertPos) + customExceptionLoggingCode + initCs.Substring(insertPos);
+				insertPos = data.InitCs.IndexOf("\t\t}", StringComparison.Ordinal);
+				data.InitCs = data.InitCs.Insert(insertPos, customExceptionLoggingCode);
 				if (initIndex > 0) initIndex += customExceptionLoggingCode.Length;
 			}
 
-			initCode = "\r\n\t\tprivate static void " + initMethodName + "()\r\n" + initCode;
-			if (writeCs)
+			if (initCodeFound || initSceneCodeFound)
 			{
-				insertPos = initIndex > 0 ? initIndex : initCs.LastIndexOf("\t}", StringComparison.Ordinal);
-				initCs = initCs.Substring(0, insertPos) + initCode + initCs.Substring(insertPos);
+				initCode = "\r\n\t\tprivate static void " + initMethodName + "()\r\n" + initCode;
+				if (writeCs)
+				{
+					insertPos = initIndex > 0 ? initIndex : data.InitCs.LastIndexOf("\t}", StringComparison.Ordinal);
+					data.InitCs = data.InitCs.Insert(insertPos, initCode);
+				}
+
+				insertPos = initTxtIndex >= 0 ? initTxtIndex : data.InitTxt.Length;
+				data.InitTxt = data.InitTxt.Insert(insertPos, initCode);
 			}
 
-			insertPos = initTxtIndex >= 0 ? initTxtIndex : initTxt.Length;
-			initTxt = initTxt.Substring(0, insertPos) + initCode + initTxt.Substring(insertPos);
-			
 			// Make sure the dir exists
-			Directory.CreateDirectory(initCsDir);
+			Directory.CreateDirectory(data.InitCsDir);
 
-			if (writeCs)
+			if (writeCs && (initCodeFound || initSceneCodeFound))
 			{
-				File.WriteAllText(initCsPath, initCs);
-				File.WriteAllText(generatedInitCsPath, generatedInitCs);
+				File.WriteAllText(data.InitCsPath, data.InitCs);
+				File.WriteAllText(data.GeneratedInitCsPath, data.GeneratedInitCs);
 			}
 			else if (originalInitCode != initCode)
 			{
-				SystemProxy.LogError($"{initMethodName} is updated in the package but you have also modified it. Compare your version with the one in AppInitializer.txt file.");
+				SystemProxy.LogError($"{initMethodName} is updated in the package but you have also modified it. Compare your version with the one in AppInitializer.txt file.\n{originalInitCode}\n{initCode}");
 			}
 
-			if (!initTxt.Contains("// DO NOT MODIFY, THIS IS A GENERATED FILE"))
+			if (!data.InitTxt.Contains("// DO NOT MODIFY, THIS IS A GENERATED FILE"))
 			{
-				initTxt = "// DO NOT MODIFY, THIS IS A GENERATED FILE\r\n" +
-				          "// This file will always contain the original init code for each package that you have installed.\r\n" +
-				          "// You can compare it with AppInitializer.cs to see what are your modifications and if there are\r\n" +
-				          "// any new modifications from the package that you need to add. NugetForUnity also uses this file\r\n" +
-				          "// to determine if it can replace the package init code in AppInitializer.cs since it will only do\r\n" +
-				          "// that if current init code matches the one from this file which means you didn't add custom\r\n" +
-				          "// modifications to it.\r\n" + initTxt;
+				data.InitTxt = "// DO NOT MODIFY, THIS IS A GENERATED FILE\r\n" +
+				               "// This file will always contain the original init code for each package that you have installed.\r\n" +
+				               "// You can compare it with AppInitializer.cs to see what are your modifications and if there are\r\n" +
+				               "// any new modifications from the package that you need to add. NugetForUnity also uses this file\r\n" +
+				               "// to determine if it can replace the package init code in AppInitializer.cs since it will only do\r\n" +
+				               "// that if current init code matches the one from this file which means you didn't add custom\r\n" +
+				               "// modifications to it.\r\n" + data.InitTxt;
 			}
-			File.WriteAllText(initTxtPath, initTxt);
+			File.WriteAllText(data.InitTxtPath, data.InitTxt);
 
 			if (editorInitCode.Length == 0 || initCodeExisted)
 			{
-				if (!File.Exists(editorCsPath))
+				if (!File.Exists(data.EditorCsPath))
 				{
-					Directory.CreateDirectory(editorCsDir);
-					File.WriteAllText(editorCsPath, editorCs);
+					Directory.CreateDirectory(data.EditorCsDir);
+					File.WriteAllText(data.EditorCsPath, data.EditorCs);
 				}
 				return;
 			}
+
+			if (data.EditorTxt.Contains(editorInitCode)) return;
+
+			DeleteMethodIfExists(initMethodName, ref data.EditorTxt, out var origStartIndex);
+			DeleteMethodIfExists(initMethodName, ref data.EditorCs, out var methodStartIndex);
 			
 			foreach (var editorUse in editorUses)
 			{
 				var usingLine = "using " + editorUse + ";";
-				if (editorCs.Contains(usingLine)) continue;
-				editorCs = usingLine + "\r\n" + editorCs;
+				if (data.EditorCs.Contains(usingLine)) continue;
+				data.EditorCs = usingLine + "\r\n" + data.EditorCs;
 			}
 
-			var braceCount = 0;
-			int n;
-			for (n = editorCs.Length - 1; n > 0; n--)
-			{
-				if (editorCs[n] != '}') continue;
-				braceCount++;
-				if (braceCount == 3) break;
-			}
+			var initEditIndexStart = data.EditorCs.IndexOf("public static void InitEditStuff()", StringComparison.Ordinal);
+			var initEditIndexEnd = data.EditorCs.IndexOf("\t\t}", initEditIndexStart, StringComparison.Ordinal);
 
-			if (braceCount != 3)
+			if (initEditIndexEnd < 0)
 			{
 				SystemProxy.LogError($"Invalid format of EditorAppInitializer.cs. Can't insert following code:\n{editorInitCode}");
 			}
+			else if (data.EditorCs.IndexOf($"\t{initMethodName}()", StringComparison.OrdinalIgnoreCase) < 0)
+			{
+				data.EditorCs = data.EditorCs.Insert(initEditIndexEnd, $"\t\t\t{initMethodName}();\r\n");
+			}
 
-			while (n > 0 && editorCs[n] != '\n') n--;
-			n++;
-			editorCs = editorCs.Substring(0, n) + editorInitCode + editorCs.Substring(n);
-			Directory.CreateDirectory(editorCsDir);
-			File.WriteAllText(editorCsPath, editorCs);
+			var optionalNewLine = "";
+			if (methodStartIndex < 0)
+			{
+				methodStartIndex = data.EditorCs.LastIndexOf("\t}", StringComparison.Ordinal);
+				optionalNewLine = "\r\n";
+			}
+			var methodCode = $"\t\tprivate static void {initMethodName}()\r\n\t\t{{\r\n{editorInitCode}\t\t}}\r\n";
+			if (methodStartIndex > 0)
+			{
+				data.EditorCs = data.EditorCs.Insert(methodStartIndex, optionalNewLine + methodCode);
+			}
+
+			if (origStartIndex > 0) data.EditorTxt = data.EditorTxt.Insert(origStartIndex, methodCode);
+			else data.EditorTxt += "\r\n" + methodCode;
+
+			Directory.CreateDirectory(data.EditorCsDir);
+			File.WriteAllText(data.EditorCsPath, data.EditorCs);
+			File.WriteAllText(data.EditorTxtPath, data.EditorTxt.TrimEnd());
+		}
+
+		private static bool DeleteMethodIfExists(string methodName, ref string content, out int startIndex)
+		{
+			startIndex = content.IndexOf($"\t\tprivate static void {methodName}()", StringComparison.OrdinalIgnoreCase);
+			if (startIndex < 0) return false;
+			var endIndex = content.IndexOf("\n\t\t}", startIndex, StringComparison.Ordinal);
+			if (endIndex < startIndex) return false;
+			endIndex += "\n\t\t}\r\n".Length;
+			if (endIndex < content.Length - 1 && content[endIndex] == '\r' && content[endIndex + 1] == '\n')
+			{
+				endIndex += 2;
+			} 
+			if (startIndex > 3 && content[startIndex - 3] == '\n' && content[startIndex - 2] == '\r')
+			{
+				startIndex -= 2;
+			}
+			if (endIndex > content.Length) endIndex = content.Length;
+
+			content = content.Remove(startIndex, endIndex - startIndex);
+			return true;
+		}
+
+		private static bool DeleteCallIfExists(string methodName, ref string content)
+		{
+			var startIndex = content.IndexOf($"\t{methodName}()", StringComparison.OrdinalIgnoreCase);
+			while (startIndex > 1 && content[startIndex - 1] == '\t') startIndex--;
+			if (startIndex <= 0) return false;
+			var endIndex = content.IndexOf("\r", startIndex, StringComparison.Ordinal);
+			if (endIndex < 0) return false;
+
+			content = content.Remove(startIndex, endIndex - startIndex + 2);
+			return true;
 		}
 
 		private struct AuthenticatedFeed
