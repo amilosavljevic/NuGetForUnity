@@ -201,6 +201,19 @@ namespace NugetForUnity
 		{
 			Application.OpenURL(url);
 		}
+		
+		/// <summary>
+		/// Displays the version number of NuGetForUnity.
+		/// </summary>
+		[MenuItem("NuGet/Clear Nuspec cache", false, 20)]
+		protected static void ClearNuspecCache()
+		{
+			var files = Directory.GetFiles("Library/", "*.nupkg");
+			foreach (var file in files)
+			{
+				File.Delete(file);
+			}
+		}
 
 		/// <summary>
 		/// Checks/launches the Releases page to update NuGetForUnity with a new version.
