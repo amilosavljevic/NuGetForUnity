@@ -358,8 +358,9 @@ namespace NugetForUnity
 						var dependencyElement = new XElement("dependency");
 						dependencyElement.Add(new XAttribute("id", dependency.Id));
 						dependencyElement.Add(new XAttribute("version", dependency.Version));
-						dependenciesElement.Add(dependencyElement);
+						group.Add(dependencyElement);
 					}
+					dependenciesElement.Add(group);
 				}
 				metadata.Add(dependenciesElement);
 			}
