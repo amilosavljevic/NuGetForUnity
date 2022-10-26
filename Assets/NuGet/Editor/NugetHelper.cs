@@ -1,14 +1,16 @@
-﻿using System;
+﻿using System.Linq;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Nordeus.Nuget.Utility;
 
+[assembly: InternalsVisibleTo("com.FastChair.NuGetForUnity.Tests")]
 namespace NugetForUnity
 {
 	/// <summary>

@@ -1,0 +1,23 @@
+{
+  "name": "com.fastchair.nugetforunity",
+  "version": "1.0.0",
+  "displayName": "NuGetForUnity fork",
+  "description": "NuGet client for Unity",
+  "unity": "2021.3",
+  "unityRelease": "6f1",
+  "documentationUrl": "https://github.com/amilosavljevic/NuGetForUnity",
+  "changelogUrl": "https://github.com/amilosavljevic/NuGetForUnity",
+  "licensesUrl": "https://github.com/amilosavljevic/NuGetForUnity",
+  "dependencies": {
+ },
+ "keywords": [
+    "NuGetForUnity",
+    "nuget",
+    "client"
+  ],
+  "author": {
+    "name": "Aleksandar",
+    "email": "acaisinovi@gmail.com",
+    "url": "https://github.com/amilosavljevic"
+  }
+}
