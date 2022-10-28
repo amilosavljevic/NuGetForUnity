@@ -123,7 +123,7 @@ namespace NugetForUnity
         /// </summary>
         /// <param name="packageFilePath"></param>
         /// <returns></returns>
-        public static XDocument ReadNuspecXmlFromPackage(string packageFilePath)
+        public static XDocument ReadNuspecXDocumentFromPackageFile(string packageFilePath)
         {
             if (!File.Exists(packageFilePath))
             {
@@ -139,28 +139,14 @@ namespace NugetForUnity
             return ReadNuspecXmlFromStream(entry.Open());
         }
 
-		/// <summary>
-		/// Loads the .nuspec file inside the .nupkg file at the given filepath.
-		/// </summary>
-		/// <param name="packageFilePath">The filepath to the .nupkg file to load.</param>
-		/// <returns>The .nuspec file loaded from inside the .nupkg file.</returns>
-		public static NuspecFile FromPackageFile(string packageFilePath)
-        {
-            var nuspecXml = ReadNuspecXmlFromPackage(packageFilePath);
-
-            return nuspecXml != null
-                ? FromXml(nuspecXml)
-                : new NuspecFile { Description = $"COULD NOT LOAD {packageFilePath}" };
-        }
-
-		/// <summary>
+        /// <summary>
 		/// Loads a .nuspec file at the given filepath.
 		/// </summary>
 		/// <param name="filePath">The full filepath to the .nuspec file to load.</param>
 		/// <returns>The newly loaded <see cref="NuspecFile"/>.</returns>
 		public static NuspecFile FromXmlFile(string filePath)
 		{
-			return FromXml(XDocument.Load(filePath));
+			return From(XDocument.Load(filePath));
 		}
 
 		/// <summary>
@@ -168,10 +154,10 @@ namespace NugetForUnity
 		/// </summary>
 		/// <param name="stream">The stream containing the .nuspec file to load.</param>
 		/// <returns>The newly loaded <see cref="NuspecFile"/>.</returns>
-		public static NuspecFile FromStream(Stream stream)
+		public static NuspecFile From(Stream stream)
 		{
             var document = ReadNuspecXmlFromStream(stream);
-			return FromXml(document);
+			return From(document);
 		}
 
         private static XDocument ReadNuspecXmlFromStream(Stream stream) =>
@@ -182,7 +168,7 @@ namespace NugetForUnity
 		/// </summary>
 		/// <param name="nuspecDocument">The .nuspec file as an <see cref="XDocument"/>.</param>
 		/// <returns>The newly loaded <see cref="NuspecFile"/>.</returns>
-		public static NuspecFile FromXml(XDocument nuspecDocument)
+		public static NuspecFile From(XDocument nuspecDocument)
 		{
             var root = nuspecDocument.Root
                        ?? throw new InvalidDataException("Root element not found in doc: " + nuspecDocument);

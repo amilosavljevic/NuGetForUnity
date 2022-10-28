@@ -169,11 +169,14 @@ namespace NugetForUnity
 			}
 			else
 			{
-                var rawXml = NuspecFile.ReadNuspecXmlFromPackage(packageFilePath);
-                nuspecFile = NuspecFile.FromXml(rawXml);
-                
+                var rawXml = NuspecFile.ReadNuspecXDocumentFromPackageFile(packageFilePath);
+
+                nuspecFile = rawXml != null
+                    ? NuspecFile.From(rawXml)
+                    : new NuspecFile { Description = $"COULD NOT LOAD {packageFilePath}" };
+
                 // cache nuspec file for next time
-                rawXml.Save(nuspecCachedPath);
+                rawXml?.Save(nuspecCachedPath);
             }
 			
 			var package = FromNuspec(nuspecFile);
