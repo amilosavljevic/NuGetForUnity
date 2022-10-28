@@ -121,16 +121,16 @@ namespace NugetForUnity
 		/// <summary>
 		/// Loads the .nuspec file inside the .nupkg file at the given filepath.
 		/// </summary>
-		/// <param name="nupkgFilepath">The filepath to the .nupkg file to load.</param>
+		/// <param name="packageFilePath">The filepath to the .nupkg file to load.</param>
 		/// <returns>The .nuspec file loaded from inside the .nupkg file.</returns>
-		public static NuspecFile FromNupkgFile(string nupkgFilepath)
+		public static NuspecFile FromPackageFile(string packageFilePath)
 		{
 			NuspecFile nuspec;
 
-			if (File.Exists(nupkgFilepath))
+			if (File.Exists(packageFilePath))
 			{
 				// get the .nuspec file from inside the .nupkg
-				using (var zip = ZipFile.OpenRead(nupkgFilepath))
+				using (var zip = ZipFile.OpenRead(packageFilePath))
 				{
 					//var entry = zip[string.Format("{0}.nuspec", packageId)];
 					var entry = zip.Entries.First(x => x.FullName.EndsWith(".nuspec"));
@@ -140,13 +140,13 @@ namespace NugetForUnity
 			}
 			else
 			{
-				SystemProxy.LogError($"Package could not be read: {nupkgFilepath}");
+				SystemProxy.LogError($"Package could not be read: {packageFilePath}");
 
 				nuspec = new NuspecFile
 				{
 					//Id = packageId,
 					//Version = packageVersion,
-					Description = $"COULD NOT LOAD {nupkgFilepath}"
+					Description = $"COULD NOT LOAD {packageFilePath}"
 				};
 			}
 

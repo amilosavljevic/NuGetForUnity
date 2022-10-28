@@ -168,7 +168,7 @@ namespace NugetForUnity
 			}
 			else
 			{
-				nuspecFile = NuspecFile.FromNupkgFile(packageFilePath);
+				nuspecFile = NuspecFile.FromPackageFile(packageFilePath);
                 nuspecFile.Save(nuspecCachedPath);
 			}
 			
