@@ -110,7 +110,7 @@ namespace NugetForUnity
 					var localPackagePath = Path.Combine(ExpandedPath, $"./{package.Id}.{package.Version}.nupkg");
 					if (File.Exists(localPackagePath))
 					{
-						var localPackage = NugetPackage.FromNupkgFile(localPackagePath);
+						var localPackage = NugetPackage.FromPackageFile(localPackagePath);
 						foundPackages = new List<NugetPackage> {localPackage};
 					}
 					else { foundPackages = new List<NugetPackage>(); }
@@ -177,7 +177,7 @@ namespace NugetForUnity
 				string localPackagePath = Path.Combine(ExpandedPath, string.Format("./{0}.{1}.nupkg", package.Id, package.Version));
 				if (File.Exists(localPackagePath))
 				{
-					NugetPackage localPackage = NugetPackage.FromNupkgFile(localPackagePath);
+					NugetPackage localPackage = NugetPackage.FromPackageFile(localPackagePath);
 					localPackage.PackageSource = this;
 					return localPackage;
 				}
@@ -306,7 +306,7 @@ namespace NugetForUnity
 
 				foreach (var packagePath in packagePaths)
 				{
-					var package = NugetPackage.FromNupkgFile(packagePath);
+					var package = NugetPackage.FromPackageFile(packagePath);
 					package.PackageSource = this;
 
 					if (package.IsPrerelease && !includePrerelease)

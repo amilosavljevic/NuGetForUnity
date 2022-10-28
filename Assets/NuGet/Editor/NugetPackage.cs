@@ -151,31 +151,39 @@ namespace NugetForUnity
 		/// <summary>
 		/// Loads a <see cref="NugetPackage"/> from the .nupkg file at the given filepath.
 		/// </summary>
-		/// <param name="nupkgFilepath">The filepath to the .nupkg file to load.</param>
+		/// <param name="packageFilePath">The filepath to the .nupkg file to load.</param>
 		/// <returns>The <see cref="NugetPackage"/> loaded from the .nupkg file.</returns>
-		public static NugetPackage FromNupkgFile(string nupkgFilepath)
+		public static NugetPackage FromPackageFile(string packageFilePath)
 		{
-			var nupgkFileInfo = new FileInfo(nupkgFilepath);
-			var cachedPath = Path.Combine(SystemProxy.CurrentDir, $"../Library/{Path.GetFileName(nupkgFilepath)}");
-			var cachedFileInfo = new FileInfo(cachedPath);
+			var packageFileInfo = new FileInfo(packageFilePath);
+			var nuspecCachedPath = GetNuSpecFileCachePath(packageFilePath);
+			var nuspecCachedFileInfo = new FileInfo(nuspecCachedPath);
 			NuspecFile nuspecFile;
-			if (cachedFileInfo.Exists && nupgkFileInfo.Exists &&
-			    cachedFileInfo.LastWriteTimeUtc > nupgkFileInfo.LastWriteTimeUtc)
+            
+			if (nuspecCachedFileInfo.Exists
+                && packageFileInfo.Exists
+                && nuspecCachedFileInfo.LastWriteTimeUtc > packageFileInfo.LastWriteTimeUtc)
 			{
-				nuspecFile = NuspecFile.Load(cachedPath);
+				nuspecFile = NuspecFile.Load(nuspecCachedPath);
 			}
 			else
 			{
-				nuspecFile = NuspecFile.FromNupkgFile(nupkgFilepath);
-				nuspecFile.Save(cachedPath);
+				nuspecFile = NuspecFile.FromNupkgFile(packageFilePath);
+                nuspecFile.Save(nuspecCachedPath);
 			}
 			
 			var package = FromNuspec(nuspecFile);
-			package.DownloadUrl = nupkgFilepath;
+			package.DownloadUrl = packageFilePath;
 			return package;
 		}
+        
+        public static string NuSpecFileCacheDirectoryPath =>
+            Path.Combine(SystemProxy.CurrentDir, "../Library/NuSpecFilesCache/");
 
-		/// <summary>
+        public static string GetNuSpecFileCachePath(string packagePath) =>
+            Path.Combine(NuSpecFileCacheDirectoryPath, Path.GetFileNameWithoutExtension(packagePath) + ".nuspec");
+
+        /// <summary>
 		/// Checks to see if the two given <see cref="NugetPackage"/>s are equal.
 		/// </summary>
 		/// <param name="x">The first <see cref="NugetPackage"/> to compare.</param>

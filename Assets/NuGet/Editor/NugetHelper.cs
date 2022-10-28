@@ -1124,7 +1124,7 @@ namespace NugetForUnity
 				var nupkgFiles = Directory.GetFiles(NugetConfigFile.RepositoryPath, "*.nupkg", SearchOption.AllDirectories);
 				foreach (var nupkgFile in nupkgFiles)
 				{
-					var package = NugetPackage.FromNupkgFile(nupkgFile);
+					var package = NugetPackage.FromPackageFile(nupkgFile);
 					if (!installedPackages.ContainsKey(package.Id))
 					{
 						var actualData = PackagesConfigFile.Packages.Find(pkg => pkg.Id == package.Id);
@@ -1305,7 +1305,7 @@ namespace NugetForUnity
 				if (File.Exists(cachedPackagePath))
 				{
 					LogVerbose("Found exact package in the cache: {0}", cachedPackagePath);
-					package = NugetPackage.FromNupkgFile(cachedPackagePath);
+					package = NugetPackage.FromPackageFile(cachedPackagePath);
 				}
 			}
 
