@@ -393,6 +393,11 @@ namespace NugetForUnity
 				}
 			}
 
+            var directory = Path.GetDirectoryName(filePath);
+            
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+
 			using (var xw = XmlWriter.Create(filePath, new XmlWriterSettings {IndentChars = "\t", Indent = true, NewLineChars = "\n"}))
 			{
 				file.Save(xw);
