@@ -216,7 +216,7 @@ namespace NugetForUnity
 				if (!isNuspec || nuspec != null && filepath == assetFilepath) return;
 				
 				filepath = assetFilepath;
-				nuspec = NuspecFile.Load(filepath);
+				nuspec = NuspecFile.FromXmlFile(filepath);
 				titleContent = new GUIContent(Path.GetFileNameWithoutExtension(filepath));
 
 				// force a repaint

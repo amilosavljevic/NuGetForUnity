@@ -11,7 +11,7 @@ namespace NugetForUnity
 	/// Represents a .nuspec file used to store metadata for a NuGet package.
 	/// </summary>
 	/// <remarks>
-	/// At a minumum, Id, Version, Description, and Authors is required.  Everything else is optional.
+	/// At a minimum, Id, Version, Description, and Authors is required.  Everything else is optional.
 	/// See more info here: https://docs.microsoft.com/en-us/nuget/schema/nuspec
 	/// </remarks>
 	public class NuspecFile
@@ -118,49 +118,49 @@ namespace NugetForUnity
 		/// </summary>
 		public List<NuspecContentFile> Files { get; } = new List<NuspecContentFile>();
 
+        /// <summary>
+        /// Read entire raw Nuspec file from package 
+        /// </summary>
+        /// <param name="packageFilePath"></param>
+        /// <returns></returns>
+        public static XDocument ReadNuspecXmlFromPackage(string packageFilePath)
+        {
+            if (!File.Exists(packageFilePath))
+            {
+                SystemProxy.LogError($"Package could not be read: {packageFilePath}");
+                return null;
+            }
+
+            // get the .nuspec file from inside the .nupkg
+            using var zip = ZipFile.OpenRead(packageFilePath);
+            
+            //var entry = zip[string.Format("{0}.nuspec", packageId)];
+            var entry = zip.Entries.First(x => x.FullName.EndsWith(".nuspec"));
+            return ReadNuspecXmlFromStream(entry.Open());
+        }
+
 		/// <summary>
 		/// Loads the .nuspec file inside the .nupkg file at the given filepath.
 		/// </summary>
 		/// <param name="packageFilePath">The filepath to the .nupkg file to load.</param>
 		/// <returns>The .nuspec file loaded from inside the .nupkg file.</returns>
 		public static NuspecFile FromPackageFile(string packageFilePath)
-		{
-			NuspecFile nuspec;
+        {
+            var nuspecXml = ReadNuspecXmlFromPackage(packageFilePath);
 
-			if (File.Exists(packageFilePath))
-			{
-				// get the .nuspec file from inside the .nupkg
-				using (var zip = ZipFile.OpenRead(packageFilePath))
-				{
-					//var entry = zip[string.Format("{0}.nuspec", packageId)];
-					var entry = zip.Entries.First(x => x.FullName.EndsWith(".nuspec"));
-
-					nuspec = Load(entry.Open());
-				}
-			}
-			else
-			{
-				SystemProxy.LogError($"Package could not be read: {packageFilePath}");
-
-				nuspec = new NuspecFile
-				{
-					//Id = packageId,
-					//Version = packageVersion,
-					Description = $"COULD NOT LOAD {packageFilePath}"
-				};
-			}
-
-			return nuspec;
-		}
+            return nuspecXml != null
+                ? FromXml(nuspecXml)
+                : new NuspecFile { Description = $"COULD NOT LOAD {packageFilePath}" };
+        }
 
 		/// <summary>
 		/// Loads a .nuspec file at the given filepath.
 		/// </summary>
 		/// <param name="filePath">The full filepath to the .nuspec file to load.</param>
 		/// <returns>The newly loaded <see cref="NuspecFile"/>.</returns>
-		public static NuspecFile Load(string filePath)
+		public static NuspecFile FromXmlFile(string filePath)
 		{
-			return Load(XDocument.Load(filePath));
+			return FromXml(XDocument.Load(filePath));
 		}
 
 		/// <summary>
@@ -168,28 +168,32 @@ namespace NugetForUnity
 		/// </summary>
 		/// <param name="stream">The stream containing the .nuspec file to load.</param>
 		/// <returns>The newly loaded <see cref="NuspecFile"/>.</returns>
-		public static NuspecFile Load(Stream stream)
+		public static NuspecFile FromStream(Stream stream)
 		{
-			XmlReader reader = new XmlTextReader(stream);
-			var document = XDocument.Load(reader);
-			return Load(document);
+            var document = ReadNuspecXmlFromStream(stream);
+			return FromXml(document);
 		}
 
-		/// <summary>
+        private static XDocument ReadNuspecXmlFromStream(Stream stream) =>
+            XDocument.Load(new XmlTextReader(stream));
+
+        /// <summary>
 		/// Loads a .nuspec file inside the given <see cref="XDocument"/>.
 		/// </summary>
 		/// <param name="nuspecDocument">The .nuspec file as an <see cref="XDocument"/>.</param>
 		/// <returns>The newly loaded <see cref="NuspecFile"/>.</returns>
-		public static NuspecFile Load(XDocument nuspecDocument)
+		public static NuspecFile FromXml(XDocument nuspecDocument)
 		{
-			var nuspec = new NuspecFile();
+            var root = nuspecDocument.Root
+                       ?? throw new InvalidDataException("Root element not found in doc: " + nuspecDocument);
 
-			var nuspecNamespace = nuspecDocument.Root.GetDefaultNamespace().ToString();
+            var nuspec = new NuspecFile();
+            var nuspecNamespace = root.GetDefaultNamespace().ToString();
 
 			var package = nuspecDocument.Element(XName.Get("package", nuspecNamespace));
-			var metadata = package.Element(XName.Get("metadata", nuspecNamespace));
+			var metadata = package!.Element(XName.Get("metadata", nuspecNamespace));
 
-			nuspec.Id = (string)metadata.Element(XName.Get("id", nuspecNamespace)) ?? string.Empty;
+			nuspec.Id = (string)metadata!.Element(XName.Get("id", nuspecNamespace)) ?? string.Empty;
 			nuspec.Version = (string)metadata.Element(XName.Get("version", nuspecNamespace)) ?? string.Empty;
 			nuspec.Title = (string)metadata.Element(XName.Get("title", nuspecNamespace)) ?? string.Empty;
 			nuspec.Authors = (string)metadata.Element(XName.Get("authors", nuspecNamespace)) ?? string.Empty;
@@ -220,10 +224,12 @@ namespace NugetForUnity
 				// Dependencies specified for specific target frameworks
 				foreach (var frameworkGroup in dependenciesElement.Elements(XName.Get("group", nuspecNamespace)))
 				{
-					var group = new NugetFrameworkGroup();
-					group.TargetFramework = ConvertFromNupkgTargetFrameworkName((string)frameworkGroup.Attribute("targetFramework") ?? string.Empty);
+					var group = new NugetFrameworkGroup
+                    {
+                        TargetFramework = ConvertFromNupkgTargetFrameworkName((string)frameworkGroup.Attribute("targetFramework") ?? string.Empty)
+                    };
 
-					foreach (var dependencyElement in frameworkGroup.Elements(XName.Get("dependency", nuspecNamespace)))
+                    foreach (var dependencyElement in frameworkGroup.Elements(XName.Get("dependency", nuspecNamespace)))
 					{
 						var dependency = new NugetPackageIdentifier
 						{
@@ -398,11 +404,9 @@ namespace NugetForUnity
             if (!Directory.Exists(directory))
                 Directory.CreateDirectory(directory);
 
-			using (var xw = XmlWriter.Create(filePath, new XmlWriterSettings {IndentChars = "\t", Indent = true, NewLineChars = "\n"}))
-			{
-				file.Save(xw);
-			}
-		}
+            using var xw = XmlWriter.Create(filePath, new XmlWriterSettings {IndentChars = "\t", Indent = true, NewLineChars = "\n"});
+            file.Save(xw);
+        }
 
 		private static string ConvertFromNupkgTargetFrameworkName(string targetFramework)
 		{

@@ -1141,7 +1141,7 @@ namespace NugetForUnity
 				var nuspecFiles = Directory.GetFiles(NugetConfigFile.RepositoryPath, "*.nuspec", SearchOption.AllDirectories);
 				foreach (var nuspecFile in nuspecFiles)
 				{
-					var package = NugetPackage.FromNuspec(NuspecFile.Load(nuspecFile));
+					var package = NugetPackage.FromNuspec(NuspecFile.FromXmlFile(nuspecFile));
 					if (!installedPackages.ContainsKey(package.Id))
 					{
 						var actualData = PackagesConfigFile.Packages.Find(pkg => pkg.Id == package.Id);

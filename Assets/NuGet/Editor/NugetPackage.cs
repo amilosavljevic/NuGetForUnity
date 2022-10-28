@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Xml.Linq;
 
 namespace NugetForUnity
 {
@@ -164,13 +165,16 @@ namespace NugetForUnity
                 && packageFileInfo.Exists
                 && nuspecCachedFileInfo.LastWriteTimeUtc > packageFileInfo.LastWriteTimeUtc)
 			{
-				nuspecFile = NuspecFile.Load(nuspecCachedPath);
+				nuspecFile = NuspecFile.FromXmlFile(nuspecCachedPath);
 			}
 			else
 			{
-				nuspecFile = NuspecFile.FromPackageFile(packageFilePath);
-                nuspecFile.Save(nuspecCachedPath);
-			}
+                var rawXml = NuspecFile.ReadNuspecXmlFromPackage(packageFilePath);
+                nuspecFile = NuspecFile.FromXml(rawXml);
+                
+                // cache nuspec file for next time
+                rawXml.Save(nuspecCachedPath);
+            }
 			
 			var package = FromNuspec(nuspecFile);
 			package.DownloadUrl = packageFilePath;
